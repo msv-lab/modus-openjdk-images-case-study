@@ -1,11 +1,41 @@
 # Could have a prefix predicate?
-is_alpine(X) :- string_concat("alpine", rest, X).
-is_oracle(X) :- string_concat("oraclelinux", rest, X).
-is_debian(X) :- !is_alpine(X), !is_oracle(X). # TODO: negation
+is_alpine(X) :- X = f"alpine${rest}".
+is_oracle(X) :- X = f"oraclelinux${rest}".
 
-base_image(X) :-
+debian_suffix(SUFFIX, JAVA_TYPE) :- (JAVA_TYPE = "jdk", SUFFIX = "-scm"), SUFFIX = "-curl".
+debian_image_name(IMAGE_NAME, X, JAVA_TYPE) :-
+    (
+        X = f"slim-${debian_suite}",
+        IMAGE_NAME = f"debian:${rest}-slim",
+    )
+    ;
+    (
+        debian_suffix(SUFFIX, JAVA_TYPE),
+        IMAGE_NAME = f"buildpack-deps:${X}${SUFFIX}"
+    ).
+
+base_image(X, MAJOR_VERSION, JAVA_HOME) :-
+    (
+        is_alpine(X),
+        alpine_latest,
+        run("apk add --no-cache java-cacerts"),
+        JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}",
+    )
+    ;
+    (
+        is_oracle(X),
+        # TODO
+    )
+    ;
+    (
+        # else debian
+        # TODO
+    ).
 
 # OpenJDK versions
 # TODO: GPG keys
-openjdk("11.0.13", "jdk", "amd64", "bullseye", "").
-openjdk("17.0.2", "jdk", "amd64", "slim-buster", "").
+openjdk("11", "11.0.13", "jdk", "amd64", "bullseye", "").
+openjdk("17", "17.0.2", "jdk", "amd64", "slim-buster", "").
+
+# Image versions
+alpine_latest :- from("alpine:latest").
