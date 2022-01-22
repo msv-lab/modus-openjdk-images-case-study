@@ -1,0 +1,11 @@
+# Could have a prefix predicate?
+is_alpine(X) :- string_concat("alpine", rest, X).
+is_oracle(X) :- string_concat("oraclelinux", rest, X).
+is_debian(X) :- !is_alpine(X), !is_oracle(X). # TODO: negation
+
+base_image(X) :-
+
+# OpenJDK versions
+# TODO: GPG keys
+openjdk("11.0.13", "jdk", "amd64", "bullseye", "").
+openjdk("17.0.2", "jdk", "amd64", "slim-buster", "").

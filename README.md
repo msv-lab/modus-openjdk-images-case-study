@@ -14,6 +14,10 @@ We can likely take combinations of these as goal tuples.
 Although, note of course that not all combinations are valid, e.g. using a windows architecture is required
 for a windows based variant.
 
+Also, note that the version + runtime + arch may still not be enough to identify a binary to fetch,
+since one needs to consider which libc was used, e.g. musl or glibc. (Maybe we should add this to
+the variables?)
+
 ## Notes on Docker's Workflow
 
 This attempts to be a tldr for https://github.com/docker-library/official-images,
