@@ -1,41 +1,66 @@
 # Could have a prefix predicate?
-is_alpine(X) :- X = f"alpine${rest}".
-is_oracle(X) :- X = f"oraclelinux${rest}".
+is_alpine(VARIANT, ALPINE_VERSION) :- VARIANT = f"alpine${ALPINE_VERSION}".
+is_oracle(VARIANT, ORACLE_VERSION) :- VARIANT = f"oraclelinux${ORACLE_VERSION}".
+
+oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION) :-
+    (ORACLE_VERSION = "7", INSTALLER = "yum install -y", CLEANER = "rm -rf /var/cache/yum")
+    ;
+    (INSTALLER = "microdnf install", CLEANER = "microdnf clean all").
 
 debian_suffix(SUFFIX, JAVA_TYPE) :- (JAVA_TYPE = "jdk", SUFFIX = "-scm"), SUFFIX = "-curl".
-debian_image_name(IMAGE_NAME, X, JAVA_TYPE) :-
+debian_image(VARIANT, JAVA_TYPE) :-
     (
-        X = f"slim-${debian_suite}",
+        VARIANT = f"slim-${debian_suite}",
         IMAGE_NAME = f"debian:${rest}-slim",
+        from(IMAGE_NAME)
     )
     ;
     (
         debian_suffix(SUFFIX, JAVA_TYPE),
-        IMAGE_NAME = f"buildpack-deps:${X}${SUFFIX}"
+        IMAGE_NAME = f"buildpack-deps:${VARIANT}${SUFFIX}",
+        from(IMAGE_NAME)
     ).
+debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
+    # TODO: determine which packages to install to base
 
-base_image(X, MAJOR_VERSION, JAVA_HOME) :-
+# Selects base image and runs relevant initial commands to prepare it.
+base_image(MAJOR_VERSION, VARIANT, JAVA_HOME) :-
     (
-        is_alpine(X),
-        alpine_latest,
+        is_alpine(VARIANT, ALPINE_VERSION),
+        from(f"alpine:${ALPINE_VERSION}")
         run("apk add --no-cache java-cacerts"),
-        JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}",
+        JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}"
     )
     ;
     (
-        is_oracle(X),
-        # TODO
+        is_oracle(VARIANT, ORACLE_VERSION),
+        oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION),
+        from(f"oraclelinux:${ORACLE_VERSION}-slim"),
+        run(f"set -eux; \
+              ${INSTALLER} gzip tar binutils freetype fontconfig; \
+              ${CLEANER}"),
+        JAVA_HOME = f"/usr/java/openjdk-${MAJOR_VERSION}"
     )
     ;
     (
         # else debian
-        # TODO
+        debian_image(VARIANT, JAVA_TYPE),
+        debian_packages(PACKAGES, VARIANT, MAJOR_VERSION),
+        run("set -eux; \
+             apt-get update; \
+             apt-get install -y --no-install-recommends ${PACKAGES}; \
+             rm -rf /var/lib/apt/lists/*")
+        JAVA_HOME = f"/usr/local/openjdk-${MAJOR_VERSION}",
     ).
 
-# OpenJDK versions
-# TODO: GPG keys
-openjdk("11", "11.0.13", "jdk", "amd64", "bullseye", "").
-openjdk("17", "17.0.2", "jdk", "amd64", "slim-buster", "").
+openjdk(VERSION, JAVA_TYPE, ARCH, VARIANT, GPG_KEYS) :-
+    semver_split(VERSION, MAJOR, MINOR, PATCH),
+    # TODO
 
-# Image versions
-alpine_latest :- from("alpine:latest").
+# OpenJDK versions
+# TODO: proper GPG keys
+openjdk("11.0.13", "jdk", "amd64", "bullseye", "").
+openjdk("17.0.2", "jdk", "amd64", "slim-buster", "").
+
+# TODO: could add this to Modus
+semver_split(VERSION, MAJOR, MINOR, PATCH) :- VERSION = f"${MAJOR}.${MINOR}.${PATCH}".

@@ -32,3 +32,5 @@ images in a well-defined format (shared amongst similar repos).
 jq/awk. This seems to use shared helper functions from bashbrew.
 - The GH action jobs are generated using bashbrew, essentially based on
 the different combinations of images allowed.
+
+A good short example of an improvement over their template file is https://github.com/docker-library/openjdk/blob/f8d1fd911fdcad985d7a534e3470a9c54c87d45f/Dockerfile-linux.template#L36-L60.
