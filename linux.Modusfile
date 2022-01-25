@@ -30,7 +30,16 @@ backwards_compatibility(JAVA_HOME) :-
          && [ \"${JAVA_HOME}\" = \"$(docker-java-home)\" ]").
 
 locale(VARIANT, LANG) :-
-    # TODO
+    (
+        is_oracle(VARIANT, ORACLE_VERSION),
+        ORACLE_VERSION = "7",
+        LANG = "en_US.UTF-8"
+    )
+    ;
+    (
+        # TODO: make sure this is ok to set on Alpine
+        LANG = "C.UTF-8"
+    ).
 
 # Selects base image and runs relevant initial commands to prepare it.
 base_image(MAJOR_VERSION, VARIANT, JAVA_HOME) :-
@@ -62,19 +71,17 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME) :-
         JAVA_HOME = f"/usr/local/openjdk-${MAJOR_VERSION}",
     ).
 
-openjdk(VERSION, JAVA_TYPE, ARCH, VARIANT, GPG_KEYS) :-
-    openjdk_config(VERSION, JAVA_TYPE, ARCH, VARIANT, GPG_KEYS),
-    semver_split(VERSION, MAJOR, MINOR, PATCH),
-    base_image(MAJOR, VARIANT, JAVA_HOME),
+openjdk(MAJOR_VERSION, VERSION, JAVA_TYPE, ARCH, VARIANT, GPG_KEYS) :-
+    openjdk_config(VERSION, JAVA_TYPE, ARCH, VARIANT, DOWNLOAD_URL),
+
+    base_image(MAJOR_VERSION, VARIANT, JAVA_HOME),
     backwards_compatibility(JAVA_HOME),
     append_path(f"${JAVA_HOME}/bin"), # replacement for `ENV PATH $JAVA_HOME/bin:$PATH`
-    locale(VARIANT),
+    locale(VARIANT, LANG),
     # TODO
 
 # Valid variations of OpenJDK
 # TODO: proper GPG keys
-openjdk_config("11.0.13", "jdk", "amd64", "bullseye", "").
-openjdk_config("17.0.2", "jdk", "amd64", "slim-buster", "").
-
-# TODO: could add this to Modus
-semver_split(VERSION, MAJOR, MINOR, PATCH) :- VERSION = f"${MAJOR}.${MINOR}.${PATCH}".
+openjdk_config("11", "11.0.13", "jdk", "amd64", "bullseye", "https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_x64_linux_11.0.13_8.tar.gz").
+openjdk_config("17", "17.0.2", "jdk", "amd64", "slim-buster", "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz").
+openjdk_config("18", "18-ea+11", "jdk", "amd64", "alpine3.15", "https://download.java.net/java/early_access/alpine/11/binaries/openjdk-18-ea+11_linux-x64-musl_bin.tar.gz").
