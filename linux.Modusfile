@@ -21,7 +21,16 @@ debian_image(VARIANT, JAVA_TYPE) :-
         from(IMAGE_NAME)
     ).
 debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
-    # TODO: determine which packages to install to base
+    # TODO: determine exact packages to install to base l78-101
+    PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit".
+
+backwards_compatibility(JAVA_HOME) :-
+    run("{ echo '#/bin/sh'; echo 'echo \"${JAVA_HOME}\"'; } > /usr/local/bin/docker-java-home \
+         && chmod +x /usr/local/bin/docker-java-home \
+         && [ \"${JAVA_HOME}\" = \"$(docker-java-home)\" ]").
+
+locale(VARIANT, LANG) :-
+    # TODO
 
 # Selects base image and runs relevant initial commands to prepare it.
 base_image(MAJOR_VERSION, VARIANT, JAVA_HOME) :-
@@ -54,13 +63,18 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME) :-
     ).
 
 openjdk(VERSION, JAVA_TYPE, ARCH, VARIANT, GPG_KEYS) :-
+    openjdk_config(VERSION, JAVA_TYPE, ARCH, VARIANT, GPG_KEYS),
     semver_split(VERSION, MAJOR, MINOR, PATCH),
+    base_image(MAJOR, VARIANT, JAVA_HOME),
+    backwards_compatibility(JAVA_HOME),
+    append_path(f"${JAVA_HOME}/bin"), # replacement for `ENV PATH $JAVA_HOME/bin:$PATH`
+    locale(VARIANT),
     # TODO
 
-# OpenJDK versions
+# Valid variations of OpenJDK
 # TODO: proper GPG keys
-openjdk("11.0.13", "jdk", "amd64", "bullseye", "").
-openjdk("17.0.2", "jdk", "amd64", "slim-buster", "").
+openjdk_config("11.0.13", "jdk", "amd64", "bullseye", "").
+openjdk_config("17.0.2", "jdk", "amd64", "slim-buster", "").
 
 # TODO: could add this to Modus
 semver_split(VERSION, MAJOR, MINOR, PATCH) :- VERSION = f"${MAJOR}.${MINOR}.${PATCH}".
