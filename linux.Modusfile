@@ -34,7 +34,7 @@ debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
 backwards_compatibility(JAVA_HOME) :-
     run(f"{ echo '#/bin/sh'; echo 'echo \"${JAVA_HOME}\"'; } > /usr/local/bin/docker-java-home \
           && chmod +x /usr/local/bin/docker-java-home \
-          && [ \"${JAVA_HOME}\" = \"$(docker-java-home)\" ]").
+          && [ \"${JAVA_HOME}\" = \"\$(docker-java-home)\" ]").
 
 locale(VARIANT, LANG) :-
     (
@@ -126,15 +126,15 @@ extract_bin(JAVA_HOME) :-
 handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
     arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER),
     run(f"set -eux; \
-          arch=\"$(${ ARCH_PRINTER })\"; \
-          case \"$arch\" in \
+          arch=\"\$(${ARCH_PRINTER})\"; \
+          case \"\$arch\" in \
               '${AMD64_MATCH}') \
                   downloadUrl='${AMD64_URL}'; \
                   ;; \
               '${ARM64_MATCH}') \
                   downloadUrl='${ARM64_URL}'; \
                   ;; \
-              *) echo >&2 \"error: unsupported architecture: '$arch'\"; exit 1 ;; \
+              *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
           esac;"),
     (
         is_debian_slim(VARIANT, DEBIAN_SUITE),
@@ -148,7 +148,7 @@ handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
         # FIXME: proper else
         VARIANT = VARIANT, run("") # no-op
     ),
-    run(f"${GETTER} openjdk.tgz \"$downloadUrl\";"),
+    run(f"${GETTER} openjdk.tgz \"\$downloadUrl\";"),
     # TODO: SHA256 checksum
     gpg_check(VARIANT),
     extract_bin(JAVA_HOME).
@@ -166,7 +166,7 @@ entry_sh(JAVA_HOME, LANG, VERSION, JAVA_TYPE, COMMAND) :-
         JAVA_TYPE = "jre", COMMAND = "java --version"
     ),
     run(f"echo '#!/bin/bash' > entry.sh; \
-          echo 'export JAVA_HOME='${JAVA_HOME}' && export LANG='${LANG}' && export JAVA_VERSION='${VERSION}' && export PATH=${JAVA_HOME}/bin:$PATH; ${COMMAND}' >> entry.sh; \
+          echo 'export JAVA_HOME='${JAVA_HOME}' && export LANG='${LANG}' && export JAVA_VERSION='${VERSION}' && export PATH=${JAVA_HOME}/bin:\$PATH; ${COMMAND}' >> entry.sh; \
           chmod +x entry.sh").
 
 openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) :-
