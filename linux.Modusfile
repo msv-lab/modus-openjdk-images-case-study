@@ -126,32 +126,34 @@ extract_bin(JAVA_HOME) :-
 handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
     arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER),
     (
-        is_debian_slim(VARIANT, DEBIAN_SUITE),
-        # TODO: choose package based on source
-        run("savedAptMark=\"$(apt-mark showmanual)\"; \
-            apt-get update; \
-            apt-get install -y --no-install-recommends \
-                dirmngr gnupg wget; \
-            rm -rf /var/lib/apt/lists/*;")
-        ;
-        # FIXME: proper else
-        VARIANT = VARIANT, run("") # no-op
-    ),
-    run(f"set -eux; \
-          arch=\"\$(${ARCH_PRINTER})\"; \
-          case \"\$arch\" in \
-              '${AMD64_MATCH}') \
-                  downloadUrl='${AMD64_URL}'; \
-                  ;; \
-              '${ARM64_MATCH}') \
-                  downloadUrl='${ARM64_URL}'; \
-                  ;; \
-              *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
-          esac; \
-          ${GETTER} openjdk.tgz \"\$downloadUrl\";"),
-    # TODO: SHA256 checksum
-    gpg_check(VARIANT),
-    extract_bin(JAVA_HOME).
+        (
+            is_debian_slim(VARIANT, DEBIAN_SUITE),
+            # TODO: choose package based on source
+            run("savedAptMark=\"$(apt-mark showmanual)\"; \
+                apt-get update; \
+                apt-get install -y --no-install-recommends \
+                    dirmngr gnupg wget; \
+                rm -rf /var/lib/apt/lists/*;")
+            ;
+            # FIXME: proper else
+            VARIANT = VARIANT, run("") # no-op
+        ),
+        run(f"set -eux; \
+            arch=\"\$(${ARCH_PRINTER})\"; \
+            case \"\$arch\" in \
+                '${AMD64_MATCH}') \
+                    downloadUrl='${AMD64_URL}'; \
+                    ;; \
+                '${ARM64_MATCH}') \
+                    downloadUrl='${ARM64_URL}'; \
+                    ;; \
+                *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
+            esac; \
+            ${GETTER} openjdk.tgz \"\$downloadUrl\";"),
+        # TODO: SHA256 checksum
+        gpg_check(VARIANT),
+        extract_bin(JAVA_HOME)
+    )::merge.
 
 ca_certs(VARIANT, JAVA_HOME) :-
     "0" = "0". # TODO
