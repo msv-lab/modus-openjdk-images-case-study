@@ -1,7 +1,7 @@
 # Could have a prefix predicate?
 is_alpine(VARIANT, ALPINE_VERSION) :- VARIANT = f"alpine${ALPINE_VERSION}".
 is_oracle(VARIANT, ORACLE_VERSION) :- VARIANT = f"oraclelinux${ORACLE_VERSION}".
-is_debian(VARIANT) :- debian_variant(VARIANT). # HACK: to determine if debian base image, should replace.
+is_debian(VARIANT) :- debian_variant(VARIANT). # HACK: to determine if (non-slim) debian base image, should replace.
 
 oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION) :-
     (ORACLE_VERSION = "7", INSTALLER = "yum install -y", CLEANER = "rm -rf /var/cache/yum")
@@ -49,7 +49,6 @@ locale(VARIANT, LANG) :-
     (
         # FIXME: this won't act as an else, negation may be necessary.
         VARIANT = VARIANT,
-        # TODO: make sure this is ok to set on Alpine
         LANG = "C.UTF-8"
     ).
 
@@ -140,7 +139,7 @@ handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
                 rm -rf /var/lib/apt/lists/*;")
             ;
             # FIXME: proper else
-            VARIANT = VARIANT, run("") # no-op
+            (is_alpine(VARIANT, ALPINE_VERSION) ; is_oracle(VARIANT, ORACLE_VERSION) ; is_debian(VARIANT)), run("") # no-op
         ),
         run(f"set -eux; \
             arch=\"\$(${ARCH_PRINTER})\"; \
@@ -206,6 +205,8 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
     entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE).
 
 openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
+    MAJOR_VERSION = MAJOR_VERSION, JAVA_TYPE = JAVA_TYPE, VARIANT = f"windows/${WINDOWS_IMAGE}", "0" = "1" # FIXME: no windows support atm.
+    ;
     openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)::set_entrypoint("./entry.sh").
 
 # Valid variations of OpenJDK

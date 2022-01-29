@@ -5,6 +5,7 @@ import csv
 from typing import List
 
 def generate_tabular():
+    # TODO: fetch from https://github.com/docker-library/openjdk/blob/master/versions.json
     filename = "versions.json"
     data = json.load(open(filename, 'r'))
     cols = ['major_version', 'version', 'java_type', 'variant', 'amd64_url', 'arm64v8_url', 'source']
