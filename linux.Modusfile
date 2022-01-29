@@ -6,8 +6,7 @@ is_debian(VARIANT) :- debian_variant(VARIANT). # HACK: to determine if debian ba
 oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION) :-
     (ORACLE_VERSION = "7", INSTALLER = "yum install -y", CLEANER = "rm -rf /var/cache/yum")
     ;
-    # TODO: use number_gt
-    (ORACLE_VERSION = "8", INSTALLER = "microdnf install", CLEANER = "microdnf clean all").
+    (number_gt(ORACLE_VERSION, "7"), INSTALLER = "microdnf install", CLEANER = "microdnf clean all").
 
 is_debian_slim(VARIANT, DEBIAN_SUITE) :- VARIANT = f"slim-${DEBIAN_SUITE}".
 debian_suffix(SUFFIX, JAVA_TYPE) :- (JAVA_TYPE = "jdk", SUFFIX = "-scm") ; (JAVA_TYPE = "jre", SUFFIX = "-curl").
@@ -32,10 +31,13 @@ debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
     MAJOR_VERSION = MAJOR_VERSION,
     PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit".
 
-backwards_compatibility(JAVA_HOME) :-
-    run(f"{ echo '#/bin/sh'; echo 'echo \"${JAVA_HOME}\"'; } > /usr/local/bin/docker-java-home \
-          && chmod +x /usr/local/bin/docker-java-home \
-          && [ \"${JAVA_HOME}\" = \"\$(docker-java-home)\" ]").
+backwards_compatibility(MAJOR_VERSION, JAVA_HOME) :-
+    # backwards compatibility for versions < 16
+    number_gt("16", MAJOR_VERSION), run(f"{ echo '#/bin/sh'; echo 'echo \"${JAVA_HOME}\"'; } > /usr/local/bin/docker-java-home \
+                                          && chmod +x /usr/local/bin/docker-java-home \
+                                          && [ \"${JAVA_HOME}\" = \"\$(docker-java-home)\" ]")
+    ;
+    (MAJOR_VERSION = "16" ; number_gt(MAJOR_VERSION, "16")), JAVA_HOME = JAVA_HOME, run("").
 
 locale(VARIANT, LANG) :-
     (
@@ -84,7 +86,8 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE) :-
         JAVA_TYPE = JAVA_TYPE,
         is_alpine(VARIANT, ALPINE_VERSION),
         from(f"alpine:${ALPINE_VERSION}"),
-        run("apk add --no-cache java-cacerts"),
+        # NOTE: bash added for entrypoint script, it's NOT present in the real OpenJDK
+        run("apk add --no-cache java-cacerts --upgrade bash"),
         JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}"
     )
     ;
@@ -166,7 +169,7 @@ smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME) :-
         ;
         MAJOR_VERSION = "8", JAVA_TYPE = "jre", COMMAND = "java -version"
         ;
-        MAJOR_VERSION = MAJOR_VERSION,
+        number_gt(MAJOR_VERSION, "8"),
         (
             JAVA_TYPE = "jdk", COMMAND = "java -Xshare:dump; \
                                           fileEncoding=\"$(echo 'System.out.println(System.getProperty(\"file.encoding\"))' | jshell -s -)\"; [ \"$fileEncoding\" = 'UTF-8' ]; rm -rf ~/.java; \
@@ -178,12 +181,13 @@ smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME) :-
     ),
     run(f"PATH=${JAVA_HOME}/bin:\$PATH; ${COMMAND}").
 
-entry_sh(JAVA_HOME, LANG, VERSION, JAVA_TYPE, COMMAND) :-
+entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE) :-
     (
-        # FIXME: check for if 8 or if it's greater. Determines if we actually call jshell.
-        JAVA_TYPE = "jdk", COMMAND = "jshell"
+        MAJOR_VERSION = "8", JAVA_TYPE = JAVA_TYPE, COMMAND = ""
         ;
-        JAVA_TYPE = "jre", COMMAND = "java --version"
+        number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jre", COMMAND = ""
+        ;
+        number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jdk", COMMAND = "jshell" # jshell only launched if jdk
     ),
     run(f"echo '#!/bin/bash' > entry.sh; \
           echo 'export JAVA_HOME='${JAVA_HOME}' && export LANG='${LANG}' && export JAVA_VERSION='${VERSION}' && export PATH=${JAVA_HOME}/bin:\$PATH; ${COMMAND}' >> entry.sh; \
@@ -193,13 +197,13 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
     openjdk_config(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL),
 
     base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE),
-    backwards_compatibility(JAVA_HOME),
+    backwards_compatibility(MAJOR_VERSION, JAVA_HOME),
     # TODO append_path(f"${JAVA_HOME}/bin"), # replacement for `ENV PATH $JAVA_HOME/bin:$PATH`
     locale(VARIANT, LANG),
     handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME),
     ca_certs(VARIANT, JAVA_HOME),
     smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME),
-    entry_sh(JAVA_HOME, LANG, VERSION, JAVA_TYPE, COMMAND).
+    entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE).
 
 openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
     openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)::set_entrypoint("./entry.sh").
