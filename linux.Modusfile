@@ -159,8 +159,24 @@ handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
 ca_certs(VARIANT, JAVA_HOME) :-
     "0" = "0". # TODO
 
-smoke_tests(MAJOR_VERSION, JAVA_TYPE) :-
-    "0" = "0". # TODO
+smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME) :-
+    # TODO: replace JAVA_HOME with proper env var
+    (
+        MAJOR_VERSION = "8", JAVA_TYPE = "jdk", COMMAND = "javac -version; java -version"
+        ;
+        MAJOR_VERSION = "8", JAVA_TYPE = "jre", COMMAND = "java -version"
+        ;
+        MAJOR_VERSION = MAJOR_VERSION,
+        (
+            JAVA_TYPE = "jdk", COMMAND = "java -Xshare:dump; \
+                                          fileEncoding=\"$(echo 'System.out.println(System.getProperty(\"file.encoding\"))' | jshell -s -)\"; [ \"$fileEncoding\" = 'UTF-8' ]; rm -rf ~/.java; \
+                                          javac --version; \
+                                          java --version"
+            ;
+            JAVA_TYPE = "jre", COMMAND = "java -Xshare:dump; java --version"
+        )
+    ),
+    run(f"PATH=${JAVA_HOME}/bin:\$PATH; ${COMMAND}").
 
 entry_sh(JAVA_HOME, LANG, VERSION, JAVA_TYPE, COMMAND) :-
     (
@@ -182,7 +198,7 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
     locale(VARIANT, LANG),
     handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME),
     ca_certs(VARIANT, JAVA_HOME),
-    smoke_tests(MAJOR_VERSION, JAVA_TYPE),
+    smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME),
     entry_sh(JAVA_HOME, LANG, VERSION, JAVA_TYPE, COMMAND).
 
 openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
@@ -197,3 +213,4 @@ openjdk_config("11", "11.0.13", "jdk", "bullseye", "https://github.com/AdoptOpen
 openjdk_config("18", "18-ea+11", "jdk", "alpine3.15", "https://download.java.net/java/early_access/alpine/11/binaries/openjdk-18-ea+11_linux-x64-musl_bin.tar.gz", "").
 
 debian_variant("bullseye").
+debian_variant("buster").
