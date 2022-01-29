@@ -2,7 +2,7 @@ This repository hosts Modusfiles intended to generate OpenJDK images.
 
 # Building
 
-`modus build . 'openjdk(A, B, C, D, E, F)' -f linux.Modusfile` should build all available images.
+`modus build . 'openjdk(A, B, C)' -f linux.Modusfile` should build all available images.
 
 # OpenJDK versions
 
