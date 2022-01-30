@@ -4,6 +4,15 @@ This repository hosts Modusfiles intended to generate OpenJDK images.
 
 `modus build . 'openjdk(A, B, C)' -f linux.Modusfile` should build all available images.
 
+# Stats
+
+An example of a typical use case, such as building all versions of OpenJDK from some base image:
+![image](https://user-images.githubusercontent.com/46009390/151683270-eed95d58-8a97-4643-bc51-834b8f3e0ce8.png)
+
+This is from scratch, i.e. the time taken for SLD resolution + time taken for parallel build with an empty docker build cache.
+
+Note that the Modusfile is not a complete reproduction of the official Docker images (yet), but as a guess any future changes would probably only affect that time by a couple of seconds. SLD resolution and fetching over a network currently dominates the time.
+
 # OpenJDK versions
 
 Below is a list that shows the ways in which an OpenJDK image can vary:
