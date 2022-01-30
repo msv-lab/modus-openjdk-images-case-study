@@ -33,10 +33,10 @@ jobs:
 
       # Runs a single command using the runners shell
       - name: Install Modus
-        run: cargo install --path ${{ GITHUB_WORKSPACE }}/modus
+        run: cargo install --path $GITHUB_WORKSPACE/modus
         
       - name: Build Linux images
-        run: ~/.cargo/bin/modus build ${{ GITHUB_WORKSPACE }}/openjdk -f ${{ GITHUB_WORKSPACE }}/openjdk/linux.Modusfile 'openjdk(A, B, C)'
+        run: ~/.cargo/bin/modus build $GITHUB_WORKSPACE/openjdk -f $GITHUB_WORKSPACE/openjdk/linux.Modusfile 'openjdk(A, B, C)'
         
       - name: View docker images
         run: docker images
