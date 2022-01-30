@@ -6,12 +6,18 @@ This repository hosts Modusfiles intended to generate OpenJDK images.
 
 # Stats
 
+## Single Variant and Java Type, Multiple Major Versions
+
 An example of a typical use case, such as building all versions of OpenJDK from some base image:
 ![image](https://user-images.githubusercontent.com/46009390/151683270-eed95d58-8a97-4643-bc51-834b8f3e0ce8.png)
 
 This is from scratch, i.e. the time taken for SLD resolution + time taken for parallel build with an empty docker build cache.
 
 Note that the Modusfile is not a complete reproduction of the official Docker images (yet), but as a guess any future changes would probably only affect that time by a couple of seconds. SLD resolution and fetching over a network currently dominates the time.
+
+## (Linux) All Major Versions, Java Types, and Variants
+
+![image](https://user-images.githubusercontent.com/46009390/151715965-33c7e905-5e93-481b-ac26-bce68aa6c091.png)
 
 # OpenJDK versions
 
