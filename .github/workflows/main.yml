@@ -1,6 +1,4 @@
-# This is a basic workflow to help you get started with Actions
-
-name: CI
+name: OpenJDK CI
 
 # Controls when the workflow will run
 on:
@@ -39,3 +37,6 @@ jobs:
         
       - name: Build Linux images
         run: ~/.cargo/bin/modus build ${{ GITHUB_WORKSPACE }}/openjdk -f ${{ GITHUB_WORKSPACE }}/openjdk/linux.Modusfile 'openjdk(A, B, C)'
+        
+      - name: View docker images
+        run: docker images
