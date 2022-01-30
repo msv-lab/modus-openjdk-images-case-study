@@ -69,7 +69,7 @@ arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER) :-
     (
         is_oracle(VARIANT, ORACLE_VERSION),
         ARCH_PRINTER = "objdump=\"$(command -v objdump)\" && objdump --file-headers \"$objdump\" | awk -F '[:,]+[[:space:]]+' '$1 == \"architecture\" { print $2 }'",
-        AMD64_MATCH = "x86_64",
+        AMD64_MATCH = "i386:x86-64",
         ARM64_MATCH = "aarch64",
         GETTER = "curl -fL -o"
     )
