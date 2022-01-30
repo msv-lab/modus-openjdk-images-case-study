@@ -171,7 +171,33 @@ ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
         MAJOR_VERSION = "8", JAVA_TYPE = "jdk", CACERTS_FILE = f"${JAVA_HOME}/jre/lib/security/cacerts"
         ;
         (number_gt(MAJOR_VERSION, "8") ; JAVA_TYPE = "jre"), CACERTS_FILE = f"${JAVA_HOME}/lib/security/cacerts"
-    ). # TODO: ca_certs
+    ),
+    (
+        is_alpine(VARIANT, ALPINE_VERSION), run(f"rm -rf \"${CACERTS_FILE}\"; \
+                                                  ln -sT /etc/ssl/certs/java/cacerts \"${CACERTS_FILE}\";")
+        ;
+        is_oracle(VARIANT, ORACLE_VERSION), run(f"rm -rf \"${CACERTS_FILE}\"; \
+                                                  ln -sT /etc/pki/ca-trust/extracted/java/cacerts \"${CACERTS_FILE}\"; \
+                                                  \
+                                                  ln -sfT \"${JAVA_HOME}\" /usr/java/default; \
+                                                  ln -sfT \"${JAVA_HOME}\" /usr/java/latest; \
+                                                  for bin in \"${JAVA_HOME}/bin/\"*; do \
+                                                      base=\"\$(basename \"\$bin\")\"; \
+                                                      [ ! -e \"/usr/bin/\$base\" ]; \
+                                                      alternatives --install \"/usr/bin/\$base\" \"\$base\" \"\$bin\" 20000; \
+                                                  done;")
+        ;
+        (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)), run(f"{ \
+                                                                                echo '#!/usr/bin/env bash'; \
+                                                                                echo 'set -Eeuo pipefail'; \
+                                                                                echo 'trust extract --overwrite --format=java-cacerts --filter=ca-anchors --purpose=server-auth \"${CACERTS_FILE}\"'; \
+                                                                            } > /etc/ca-certificates/update.d/docker-openjdk; \
+                                                                            chmod +x /etc/ca-certificates/update.d/docker-openjdk; \
+                                                                            /etc/ca-certificates/update.d/docker-openjdk; \
+                                                                            \
+                                                                            find \"${JAVA_HOME}/lib\" -name '*.so' -exec dirname '{}' ';' | sort -u > /etc/ld.so.conf.d/docker-openjdk.conf; \
+                                                                            ldconfig;")
+    ).
 
 smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME) :-
     # TODO: replace JAVA_HOME with proper env var
