@@ -34,7 +34,7 @@ We used [dive](https://github.com/wagoodman/dive) which provides an estimate of 
 
 ## Compactness
 
-TODO
+A [single 300-350 line file](./linux.Modusfile) is all that's required to build this through Modus. In contrast, [the templating approach](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template) requires a 330 line template file in addition to a shell script and json configuration that add over 100 more lines.
 
 # OpenJDK Configuration
 
