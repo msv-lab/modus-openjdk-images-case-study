@@ -33,7 +33,7 @@ debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
     PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit".
 
 backwards_compatibility(MAJOR_VERSION, JAVA_HOME) :-
-    # backwards compatibility for versions < 16
+    # backwards compatibility for debian versions < 16
     number_gt("16", MAJOR_VERSION), run(f"{ echo '#/bin/sh'; echo 'echo \"${JAVA_HOME}\"'; } > /usr/local/bin/docker-java-home \
                                           && chmod +x /usr/local/bin/docker-java-home \
                                           && [ \"${JAVA_HOME}\" = \"\$(docker-java-home)\" ]")
@@ -114,7 +114,8 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE) :-
               apt-get update; \
               apt-get install -y --no-install-recommends ${PACKAGES}; \
               rm -rf /var/lib/apt/lists/*"),
-        JAVA_HOME = f"/usr/local/openjdk-${MAJOR_VERSION}"
+        JAVA_HOME = f"/usr/local/openjdk-${MAJOR_VERSION}",
+        backwards_compatibility(MAJOR_VERSION, JAVA_HOME)
     ).
 
 gpg_check(VARIANT) :-
@@ -160,10 +161,17 @@ handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
         # TODO: SHA256 checksum
         gpg_check(VARIANT),
         extract_bin(JAVA_HOME)
+        # TODO: debian slim apt mark purging
     )::merge.
 
-ca_certs(VARIANT, JAVA_HOME) :-
-    "0" = "0". # TODO
+ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
+    MAJOR_VERSION = MAJOR_VERSION, # More groundness inconvenience here.
+    JAVA_TYPE = JAVA_TYPE,
+    (
+        MAJOR_VERSION = "8", JAVA_TYPE = "jdk", CACERTS_FILE = f"${JAVA_HOME}/jre/lib/security/cacerts"
+        ;
+        (number_gt(MAJOR_VERSION, "8") ; JAVA_TYPE = "jre"), CACERTS_FILE = f"${JAVA_HOME}/lib/security/cacerts"
+    ). # TODO: ca_certs
 
 smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME) :-
     # TODO: replace JAVA_HOME with proper env var
@@ -200,11 +208,10 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
     openjdk_config(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, SOURCE),
 
     base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE),
-    backwards_compatibility(MAJOR_VERSION, JAVA_HOME),
     # TODO append_path(f"${JAVA_HOME}/bin"), # replacement for `ENV PATH $JAVA_HOME/bin:$PATH`
     locale(VARIANT, LANG),
     handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME),
-    ca_certs(VARIANT, JAVA_HOME),
+    ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
     smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME),
     entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE).
 
