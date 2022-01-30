@@ -2,13 +2,13 @@
 is_alpine(VARIANT, ALPINE_VERSION) :- VARIANT = f"alpine${ALPINE_VERSION}".
 is_oracle(VARIANT, ORACLE_VERSION) :- VARIANT = f"oraclelinux${ORACLE_VERSION}".
 is_debian(VARIANT) :- debian_variant(VARIANT). # HACK: to determine if (non-slim) debian base image, should replace.
+is_debian_slim(VARIANT, DEBIAN_SUITE) :- VARIANT = f"slim-${DEBIAN_SUITE}".
 
 oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION) :-
     (ORACLE_VERSION = "7", INSTALLER = "yum install -y", CLEANER = "rm -rf /var/cache/yum")
     ;
     (number_gt(ORACLE_VERSION, "7"), INSTALLER = "microdnf install", CLEANER = "microdnf clean all").
 
-is_debian_slim(VARIANT, DEBIAN_SUITE) :- VARIANT = f"slim-${DEBIAN_SUITE}".
 debian_suffix(SUFFIX, JAVA_TYPE) :- (JAVA_TYPE = "jdk", SUFFIX = "-scm") ; (JAVA_TYPE = "jre", SUFFIX = "-curl").
 debian_image(VARIANT, JAVA_TYPE) :-
     (
@@ -48,8 +48,11 @@ locale(VARIANT, LANG) :-
     )
     ;
     (
-        # FIXME: this won't act as an else, negation may be necessary.
-        VARIANT = VARIANT,
+        # FIXME: actual else using negation
+        (is_oracle(VARIANT, ORACLE_VERSION), number_gt(ORACLE_VERSION, "7")
+         ; is_alpine(VARIANT, ALPINE_VERSION)
+         ; is_debian(VARIANT)
+         ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
         LANG = "C.UTF-8"
     ).
 
