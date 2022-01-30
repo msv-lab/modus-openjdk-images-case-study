@@ -29,6 +29,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository:  modus-continens/modus
+          token: ${{ secrets.GH_PAT }} # `GH_PAT` is a secret that contains your PAT
           path: modus
 
       # Runs a single command using the runners shell
