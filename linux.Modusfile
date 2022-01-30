@@ -27,10 +27,11 @@ debian_image(VARIANT, JAVA_TYPE) :-
         from(IMAGE_NAME)
     ).
 debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
-    # TODO: determine exact packages to install to base l78-101
-    VARIANT = VARIANT,
-    MAJOR_VERSION = MAJOR_VERSION,
-    PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit".
+    MAJOR_VERSION = MAJOR_VERSION, is_debian_slim(VARIANT, DEBIAN_SUITE), PACKAGES = "ca-certificates p11-kit"
+    ;
+    is_debian(VARIANT), number_gt(MAJOR_VERSION, "12"), PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit"
+    ;
+    is_debian(VARIANT), (MAJOR_VERSION = "12" ; number_gt("12", MAJOR_VERSION)), PACKAGES = "bzip2 unzip xz-utils fontconfig libfreetype6 ca-certificates p11-kit".
 
 backwards_compatibility(MAJOR_VERSION, JAVA_HOME) :-
     # backwards compatibility for debian versions < 16
@@ -135,31 +136,41 @@ handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
     arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER),
     (
         (
-            is_debian_slim(VARIANT, DEBIAN_SUITE),
             # TODO: choose package based on source
-            run("savedAptMark=\"$(apt-mark showmanual)\"; \
-                apt-get update; \
-                apt-get install -y --no-install-recommends \
-                    dirmngr gnupg wget; \
-                rm -rf /var/lib/apt/lists/*;")
+            is_debian_slim(VARIANT, DEBIAN_SUITE),
+            PREFETCH_COMMAND = "savedAptMark=\"$(apt-mark showmanual)\"; \
+                                apt-get update; \
+                                apt-get install -y --no-install-recommends \
+                                    dirmngr gnupg wget; \
+                                rm -rf /var/lib/apt/lists/*;",
+            POSTFETCH_COMMAND = "apt-mark auto '.*' > /dev/null; \
+                                 [ -z \"$savedAptMark\" ] || apt-mark manual $savedAptMark > /dev/null; \
+                                 apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false;"
+
             ;
+
             # FIXME: proper else
-            (is_alpine(VARIANT, ALPINE_VERSION) ; is_oracle(VARIANT, ORACLE_VERSION) ; is_debian(VARIANT)), run("") # no-op
+            (is_alpine(VARIANT, ALPINE_VERSION) ; is_oracle(VARIANT, ORACLE_VERSION) ; is_debian(VARIANT)),
+            # no-ops
+            PREFETCH_COMMAND = ":;",
+            POSTFETCH_COMMAND = ":;"
         ),
         run(f"set -eux; \
-            arch=\"\$(${ARCH_PRINTER})\"; \
-            case \"\$arch\" in \
-                '${AMD64_MATCH}') \
-                    downloadUrl='${AMD64_URL}'; \
-                    ;; \
-                '${ARM64_MATCH}') \
-                    downloadUrl='${ARM64_URL}'; \
-                    ;; \
-                *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
-            esac; \
-            ${GETTER} openjdk.tgz \"\$downloadUrl\";"),
+              ${PREFETCH_COMMAND} \
+              arch=\"\$(${ARCH_PRINTER})\"; \
+              case \"\$arch\" in \
+                  '${AMD64_MATCH}') \
+                      downloadUrl='${AMD64_URL}'; \
+                      ;; \
+                  '${ARM64_MATCH}') \
+                      downloadUrl='${ARM64_URL}'; \
+                      ;; \
+                  *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
+              esac; \
+              ${GETTER} openjdk.tgz \"\$downloadUrl\"; \
+              ${POSTFETCH_COMMAND}"),
         # TODO: SHA256 checksum
-        gpg_check(VARIANT),
+        gpg_check(VARIANT), # NOTE: the postfetch command should actually go after this, but we need the env vars
         extract_bin(JAVA_HOME)
         # TODO: debian slim apt mark purging
     ).
