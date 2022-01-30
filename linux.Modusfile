@@ -162,7 +162,7 @@ handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
         gpg_check(VARIANT),
         extract_bin(JAVA_HOME)
         # TODO: debian slim apt mark purging
-    )::merge.
+    ).
 
 ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
     MAJOR_VERSION = MAJOR_VERSION, # More groundness inconvenience here.
@@ -236,9 +236,11 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
     base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE),
     # TODO append_path(f"${JAVA_HOME}/bin"), # replacement for `ENV PATH $JAVA_HOME/bin:$PATH`
     locale(VARIANT, LANG),
-    handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME),
-    ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
-    smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME),
+    (
+        handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME),
+        ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
+        smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME)
+    )::merge,
     entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE).
 
 openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
