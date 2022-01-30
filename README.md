@@ -1,4 +1,8 @@
+# Modus' OpenJDK Images 📦
+
 This repository hosts Modusfile(s) intended to generate OpenJDK images.
+
+---
 
 # Building
 
