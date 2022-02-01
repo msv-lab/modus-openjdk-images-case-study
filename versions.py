@@ -82,7 +82,7 @@ def main():
 
     def to_fact(row):
         delims = ('"' + arg + '"' for arg in row)
-        return f"openjdk_config({'.'.join(delims)})."
+        return f"openjdk_config({','.join(delims)})."
 
     with open('facts.Modusfile', 'w') as out:
         for row in rows:
