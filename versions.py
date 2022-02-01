@@ -80,5 +80,13 @@ def main():
         csv_out.writerow(cols)
         csv_out.writerows(rows)
 
+    def to_fact(row):
+        delims = ('"' + arg + '"' for arg in row)
+        return f"openjdk_config({'.'.join(delims)})."
+
+    with open('facts.Modusfile', 'w') as out:
+        for row in rows:
+            out.write(f"{to_fact(row)}\n")
+
 if __name__ == "__main__":
     main()
