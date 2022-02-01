@@ -5,9 +5,13 @@ is_debian(VARIANT) :- debian_variant(VARIANT). # HACK: to determine if (non-slim
 is_debian_slim(VARIANT, DEBIAN_SUITE) :- VARIANT = f"slim-${DEBIAN_SUITE}".
 
 oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION) :-
-    (ORACLE_VERSION = "7", INSTALLER = "yum install -y", CLEANER = "rm -rf /var/cache/yum")
+    (
+        ORACLE_VERSION = "7", INSTALLER = "yum install -y", CLEANER = "rm -rf /var/cache/yum"
+    )
     ;
-    (number_gt(ORACLE_VERSION, "7"), INSTALLER = "microdnf install", CLEANER = "microdnf clean all").
+    (
+        number_gt(ORACLE_VERSION, "7"), INSTALLER = "microdnf install", CLEANER = "microdnf clean all"
+    ).
 
 debian_suffix(SUFFIX, JAVA_TYPE) :- (JAVA_TYPE = "jdk", SUFFIX = "-scm") ; (JAVA_TYPE = "jre", SUFFIX = "-curl").
 debian_image(VARIANT, JAVA_TYPE) :-
@@ -210,7 +214,7 @@ ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
                                                                             ldconfig;")
     ).
 
-smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME) :-
+smoke_tests(MAJOR_VERSION, JAVA_TYPE) :-
     # TODO: replace JAVA_HOME with proper env var
     (
         MAJOR_VERSION = "8", JAVA_TYPE = "jdk", COMMAND = "javac -version; java -version"
@@ -227,7 +231,7 @@ smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME) :-
             JAVA_TYPE = "jre", COMMAND = "java -Xshare:dump; java --version"
         )
     ),
-    run(f"PATH=${JAVA_HOME}/bin:\$PATH; ${COMMAND}").
+    run(COMMAND).
 
 entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE) :-
     (
@@ -237,15 +241,16 @@ entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE) :-
         ;
         number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jdk", COMMAND = "jshell" # jshell only launched if jdk
     ),
-    run(f"echo '#!/bin/bash' > entry.sh; \
-          echo 'export JAVA_HOME='${JAVA_HOME}' && export LANG='${LANG}' && export JAVA_VERSION='${VERSION}' && export PATH=${JAVA_HOME}/bin:\$PATH; ${COMMAND}' >> entry.sh; \
-          chmod +x entry.sh").
+    run(f"echo '#!/bin/bash' > entry.sh; echo '${COMMAND}' >> entry.sh; chmod +x entry.sh").
 
 openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) :-
     openjdk_config(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, SOURCE),
 
-    base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE),
-    # TODO append_path(f"${JAVA_HOME}/bin"), # replacement for `ENV PATH $JAVA_HOME/bin:$PATH`
+    base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE)
+        ::append_path(f"${JAVA_HOME}/bin")
+        ::set_env("JAVA_HOME", JAVA_HOME)
+        ::set_env("LANG", LANG)
+        ::set_env("JAVA_VERSION", VERSION),
     locale(VARIANT, LANG),
     (
         handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME),
