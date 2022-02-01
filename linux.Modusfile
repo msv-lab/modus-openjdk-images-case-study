@@ -176,7 +176,6 @@ handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
         # TODO: SHA256 checksum
         gpg_check(VARIANT), # NOTE: the postfetch command should actually go after this, but we need the env vars
         extract_bin(JAVA_HOME)
-        # TODO: debian slim apt mark purging
     ).
 
 ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
@@ -215,7 +214,6 @@ ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
     ).
 
 smoke_tests(MAJOR_VERSION, JAVA_TYPE) :-
-    # TODO: replace JAVA_HOME with proper env var
     (
         MAJOR_VERSION = "8", JAVA_TYPE = "jdk", COMMAND = "javac -version; java -version"
         ;
