@@ -233,7 +233,7 @@ smoke_tests(MAJOR_VERSION, JAVA_TYPE) :-
     ),
     run(COMMAND).
 
-entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE) :-
+entry_sh(MAJOR_VERSION, JAVA_TYPE) :-
     (
         MAJOR_VERSION = "8", JAVA_TYPE = JAVA_TYPE, COMMAND = "bash" # HACK: Probably shouldn't assume bash
         ;
@@ -255,9 +255,9 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
     (
         handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME),
         ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
-        smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME)
+        smoke_tests(MAJOR_VERSION, JAVA_TYPE)
     )::merge,
-    entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE).
+    entry_sh(MAJOR_VERSION, JAVA_TYPE).
 
 openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
     MAJOR_VERSION = MAJOR_VERSION, JAVA_TYPE = JAVA_TYPE, VARIANT = f"windows/${WINDOWS_IMAGE}", "0" = "1" # FIXME: no windows support atm.
