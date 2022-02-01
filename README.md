@@ -17,12 +17,12 @@ This repository hosts Modusfile(s) intended to generate OpenJDK images.
 As shown above, we are able to solve and build all 46 combinations of Linux-based OpenJDK images in under 15 minutes on a single machine.
 This is from scratch, i.e. the time taken for SLD resolution + time taken for parallel build with an empty docker build cache.
 
-## (Outdated) Single Variant and Java Type, Multiple Major Versions
+## All Major Versions of JDK on slim-bullseye
 
-TODO: update
+An example of a typical use case, such as building all versions of JDK on a particular base image:
+![image](https://user-images.githubusercontent.com/46009390/152064170-e59cba81-beac-411e-b078-1e64f5f186ed.png)
 
-An example of a typical use case, such as building all versions of OpenJDK from some base image:
-![image](https://user-images.githubusercontent.com/46009390/151683270-eed95d58-8a97-4643-bc51-834b8f3e0ce8.png)
+Again, this is from an empty build cache. We're able to build 5 versions in under 2 minutes.
 
 ## Efficiency
 
