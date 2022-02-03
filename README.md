@@ -14,7 +14,7 @@ Often, this serves as a method to conditionally execute some instruction, or sel
 To provide a baseline for our performance tests, we built the [official Dockerfiles](https://github.com/docker-library/openjdk) sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
 ![image](https://user-images.githubusercontent.com/46009390/152375583-61cbeb04-4a4d-46ee-8e2e-f5eadc112aaa.png)
 
-As shown above, it took over 18 minutes to build 40 images with any empty build cache.
+As shown above, it took over 18 minutes to build 40 images with an empty build cache.
 
 ## Building & Reproducing Results
 
