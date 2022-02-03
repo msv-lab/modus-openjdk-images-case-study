@@ -46,13 +46,13 @@ debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
     ;
     (
         is_debian(VARIANT),
-        number_gt(MAJOR_VERSION, "12"),
+        number_geq(MAJOR_VERSION, "13"),
         PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit"
     )
     ;
     (
         is_debian(VARIANT),
-        (MAJOR_VERSION = "12" ; number_gt("12", MAJOR_VERSION)),
+        number_gt("13", MAJOR_VERSION),
         PACKAGES = "bzip2 unzip xz-utils fontconfig libfreetype6 ca-certificates p11-kit"
     ).
 
@@ -66,7 +66,7 @@ backwards_compatibility(MAJOR_VERSION, JAVA_HOME) :-
     )
     ;
     (
-        (MAJOR_VERSION = "16" ; number_gt(MAJOR_VERSION, "16")),
+        number_geq(MAJOR_VERSION, "16"),
         JAVA_HOME = JAVA_HOME,
         run("")
     ).
