@@ -302,7 +302,8 @@ openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
         MAJOR_VERSION = MAJOR_VERSION,
         JAVA_TYPE = JAVA_TYPE,
         VARIANT = f"windows/${WINDOWS_IMAGE}",
-        "0" = "1" # FIXME: no windows support atm.
+        "0" = "1", # TODO: no windows support atm.
+        from("failing-container:latest")
     )
     ;
     (
