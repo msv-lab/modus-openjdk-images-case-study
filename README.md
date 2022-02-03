@@ -1,23 +1,39 @@
 # Modus' OpenJDK Images 📦
 
-This repository hosts Modusfile(s) intended to generate OpenJDK images.
+## Motivation & Background
 
----
+Modus provides an alternative syntax to express Dockerfiles, and an alternative interface to BuildKit. Together, this provides a build system that makes it easier to define complex, parameterized builds with no loss in efficiency w.r.t. time to build or image sizes. Furthermore, in a number of use cases, Modus makes image-creation workflows more efficient.
 
-# Building
+This repository hosts Modusfile(s) intended to generate OCI-compatible images that provide OpenJDK application runtimes. 
+
+The [Docker Official Images](https://github.com/docker-library/official-images) project provides well-maintained application runtimes packaged in images. Their image creation workflow involves templated Dockerfiles, bash scripts, as well as non-trivial jq and awk processing.
+Often, this serves as a method to conditionally execute some instruction, or select between some strings. Modus provides a cohesive system that replaces the need for Dockerfile templating, and most of the surrounding ad-hoc scripts.
+
+## Building & Reproducing Results
 
 `modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` should build all available images.
 
+---
+
 # Stats
 
-## (Linux) All Major Versions, Java Types, and Variants
+## Baseline - Official Linux-based OpenJDK Dockerfiles
+
+To provide a baseline for our performance tests, we built the [official Dockerfiles](https://github.com/docker-library/openjdk) sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
+![image](https://user-images.githubusercontent.com/46009390/152375583-61cbeb04-4a4d-46ee-8e2e-f5eadc112aaa.png)
+
+As shown above, it took over 18 minutes to build 40 images with any empty build cache.
+
+## Linux - All Major Versions, Java Types, and Variants
 
 ![image](https://user-images.githubusercontent.com/46009390/151715965-33c7e905-5e93-481b-ac26-bce68aa6c091.png)
 
-As shown above, we are able to solve and build all 46 combinations of Linux-based OpenJDK images in under 15 minutes on a single machine.
+As shown above, we are able to solve and build all 46 combinations[^46] of Linux-based OpenJDK images in under 15 minutes on a single machine.
 This is from scratch, i.e. the time taken for SLD resolution + time taken for parallel build with an empty docker build cache.
 
-## All Major Versions of JDK on slim-bullseye
+[^46]: We built 46 images rather than 40 since the OpenJDK Official Images program does not provide all combinations, possibly for security reasons or otherwise. However, we build a superset, so we do build all that they provide.
+
+## Linux - All Major Versions of JDK on slim-bullseye
 
 An example of a typical use case, such as building all versions of JDK on a particular base image:
 ![image](https://user-images.githubusercontent.com/46009390/152064170-e59cba81-beac-411e-b078-1e64f5f186ed.png)
