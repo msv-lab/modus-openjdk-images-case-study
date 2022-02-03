@@ -2,14 +2,16 @@
 
 ## Motivation & Background
 
-Modus provides an alternative syntax to express Dockerfiles, and an alternative interface to BuildKit. Together, this provides a build system that makes it easier to define complex, parameterized builds with no loss in efficiency w.r.t. time to build or image sizes. Furthermore, in a number of use cases, Modus makes image-creation workflows more efficient.
+Modus provides an alternative syntax to express Dockerfiles, and an alternative interface to BuildKit. Together, this provides a build system that makes it easier to define complex, parameterized builds with close to zero loss in efficiency w.r.t. time to build or image sizes. Furthermore, in a number of use cases, Modus makes image-creation workflows **more** efficient.
 
 This repository hosts Modusfile(s) intended to generate OCI-compatible images that provide OpenJDK application runtimes. 
 
 The [Docker Official Images](https://github.com/docker-library/official-images) project provides and maintains application runtimes packaged in images. Their image creation workflow involves templated Dockerfiles, bash scripts, as well as non-trivial jq and awk processing.
 Often, this serves as a method to conditionally execute some instruction, or select between some strings. Modus provides a cohesive system that replaces the need for Dockerfile templating, and most of the surrounding ad-hoc scripts.
 
-[Here](#openjdk-configuration) is a summary of how we have parameterized OpenJDK builds. This demonstrates another advantage of Modus; using it requires you to think *explicitly* about the ways in which your builds can vary. In contrast, the official images *implicitly* define this through their [JSON versions file](https://github.com/docker-library/openjdk/blob/master/versions.json), it is not sufficient on its own to understand which configurations are valid: one also needs to check other scripts or template files.
+[Here](#openjdk-configuration) is a summary of how we have parameterized OpenJDK builds. This demonstrates another advantage of Modus; using it requires you to think *explicitly* about the ways in which your builds can vary. In contrast, the official images *implicitly* define this through their [JSON versions file](https://github.com/docker-library/openjdk/blob/master/versions.json): it is not sufficient on its own to understand which configurations are valid. One also needs to check the other scripts or template files. For example, one would need to read their [templating script](https://github.com/docker-library/openjdk/blob/master/apply-templates.sh) to realize that Windows variants are handled differently[^alt].
+
+[^alt]: This could also be solved by changing the format of their `versions.json` file. Nevertheless, it demonstrates a problem that emerges from complicated image creation systems.
 
 ### Baseline - Official Linux-based OpenJDK Dockerfiles
 
