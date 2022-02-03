@@ -9,6 +9,13 @@ This repository hosts Modusfile(s) intended to generate OCI-compatible images th
 The [Docker Official Images](https://github.com/docker-library/official-images) project provides well-maintained application runtimes packaged in images. Their image creation workflow involves templated Dockerfiles, bash scripts, as well as non-trivial jq and awk processing.
 Often, this serves as a method to conditionally execute some instruction, or select between some strings. Modus provides a cohesive system that replaces the need for Dockerfile templating, and most of the surrounding ad-hoc scripts.
 
+### Baseline - Official Linux-based OpenJDK Dockerfiles
+
+To provide a baseline for our performance tests, we built the [official Dockerfiles](https://github.com/docker-library/openjdk) sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
+![image](https://user-images.githubusercontent.com/46009390/152375583-61cbeb04-4a4d-46ee-8e2e-f5eadc112aaa.png)
+
+As shown above, it took over 18 minutes to build 40 images with any empty build cache.
+
 ## Building & Reproducing Results
 
 `modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` should build all available images.
@@ -16,13 +23,6 @@ Often, this serves as a method to conditionally execute some instruction, or sel
 ---
 
 # Stats
-
-## Baseline - Official Linux-based OpenJDK Dockerfiles
-
-To provide a baseline for our performance tests, we built the [official Dockerfiles](https://github.com/docker-library/openjdk) sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
-![image](https://user-images.githubusercontent.com/46009390/152375583-61cbeb04-4a4d-46ee-8e2e-f5eadc112aaa.png)
-
-As shown above, it took over 18 minutes to build 40 images with any empty build cache.
 
 ## Linux - All Major Versions, Java Types, and Variants
 
