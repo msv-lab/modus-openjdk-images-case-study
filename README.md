@@ -6,8 +6,10 @@ Modus provides an alternative syntax to express Dockerfiles, and an alternative 
 
 This repository hosts Modusfile(s) intended to generate OCI-compatible images that provide OpenJDK application runtimes. 
 
-The [Docker Official Images](https://github.com/docker-library/official-images) project provides well-maintained application runtimes packaged in images. Their image creation workflow involves templated Dockerfiles, bash scripts, as well as non-trivial jq and awk processing.
+The [Docker Official Images](https://github.com/docker-library/official-images) project provides and maintains application runtimes packaged in images. Their image creation workflow involves templated Dockerfiles, bash scripts, as well as non-trivial jq and awk processing.
 Often, this serves as a method to conditionally execute some instruction, or select between some strings. Modus provides a cohesive system that replaces the need for Dockerfile templating, and most of the surrounding ad-hoc scripts.
+
+[Here](#openjdk-configuration) is a summary of how we have parameterized OpenJDK builds. This demonstrates another advantage of Modus; using it requires you to think *explicitly* about the ways in which your builds can vary.
 
 ### Baseline - Official Linux-based OpenJDK Dockerfiles
 
