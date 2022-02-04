@@ -1,293 +1,293 @@
 # Could have a prefix predicate?
-is_alpine(VARIANT, ALPINE_VERSION) :- VARIANT = f"alpine${ALPINE_VERSION}".
-is_oracle(VARIANT, ORACLE_VERSION) :- VARIANT = f"oraclelinux${ORACLE_VERSION}".
-is_debian(VARIANT) :- debian_variant(VARIANT). # HACK: to determine if (non-slim) debian base image, should replace.
-is_debian_slim(VARIANT, DEBIAN_SUITE) :- VARIANT = f"slim-${DEBIAN_SUITE}".
+is_alpine(variant, alpine_version) :- variant = f"alpine${alpine_version}".
+is_oracle(variant, oracle_version) :- variant = f"oraclelinux${oracle_version}".
+is_debian(variant) :- debian_variant(variant). # HACK: to determine if (non-slim) debian base image, should replace.
+is_debian_slim(variant, debian_suite) :- variant = f"slim-${debian_suite}".
 
-oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION) :-
+oracle_commands(installer, cleaner, oracle_version) :-
     (
-        ORACLE_VERSION = "7",
-        INSTALLER = "yum install -y",
-        CLEANER = "rm -rf /var/cache/yum"
+        oracle_version = "7",
+        installer = "yum install -y",
+        cleaner = "rm -rf /var/cache/yum"
     ;
-        number_gt(ORACLE_VERSION, "7"),
-        INSTALLER = "microdnf install",
-        CLEANER = "microdnf clean all"
+        number_gt(oracle_version, "7"),
+        installer = "microdnf install",
+        cleaner = "microdnf clean all"
     ).
 
-debian_suffix(SUFFIX, JAVA_TYPE) :-
+debian_suffix(suffix, java_type) :-
     (
-        JAVA_TYPE = "jdk", SUFFIX = "-scm"
+        java_type = "jdk", suffix = "-scm"
     ;
-        JAVA_TYPE = "jre", SUFFIX = "-curl"
+        java_type = "jre", suffix = "-curl"
     ).
-debian_image(VARIANT, JAVA_TYPE) :-
+debian_image(variant, java_type) :-
     (
         # FIXME: some weirdness with groundness check in disjunction
-        # Maybe I should remove unused variables from the head when translating to IR?
-        JAVA_TYPE = JAVA_TYPE,
-        is_debian_slim(VARIANT, DEBIAN_SUITE),
-        IMAGE_NAME = f"debian:${DEBIAN_SUITE}-slim",
-        from(IMAGE_NAME)
+        # maybe i should remove unused variables from the head when translating to ir?
+        java_type = java_type,
+        is_debian_slim(variant, debian_suite),
+        image_name = f"debian:${debian_suite}-slim",
+        from(image_name)
     ;
-        is_debian(VARIANT),
-        debian_suffix(SUFFIX, JAVA_TYPE),
-        IMAGE_NAME = f"buildpack-deps:${VARIANT}${SUFFIX}",
-        from(IMAGE_NAME)
+        is_debian(variant),
+        debian_suffix(suffix, java_type),
+        image_name = f"buildpack-deps:${variant}${suffix}",
+        from(image_name)
     ).
-debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
+debian_packages(packages, variant, major_version) :-
     (
-        MAJOR_VERSION = MAJOR_VERSION,
-        is_debian_slim(VARIANT, DEBIAN_SUITE),
-        PACKAGES = "ca-certificates p11-kit"
+        major_version = major_version,
+        is_debian_slim(variant, debian_suite),
+        packages = "ca-certificates p11-kit"
     ;
-        is_debian(VARIANT),
-        number_geq(MAJOR_VERSION, "13"),
-        PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit"
+        is_debian(variant),
+        number_geq(major_version, "13"),
+        packages = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit"
     ;
-        is_debian(VARIANT),
-        number_gt("13", MAJOR_VERSION),
-        PACKAGES = "bzip2 unzip xz-utils fontconfig libfreetype6 ca-certificates p11-kit"
+        is_debian(variant),
+        number_gt("13", major_version),
+        packages = "bzip2 unzip xz-utils fontconfig libfreetype6 ca-certificates p11-kit"
     ).
 
-backwards_compatibility(MAJOR_VERSION, JAVA_HOME) :-
+backwards_compatibility(major_version, java_home) :-
     # backwards compatibility for debian versions < 16
     (
-        number_gt("16", MAJOR_VERSION),
-        run(f"{ echo '#/bin/sh'; echo 'echo \"${JAVA_HOME}\"'; } > /usr/local/bin/docker-java-home \
+        number_gt("16", major_version),
+        run(f"{ echo '#/bin/sh'; echo 'echo \"${java_home}\"'; } > /usr/local/bin/docker-java-home \
               && chmod +x /usr/local/bin/docker-java-home \
-              && [ \"${JAVA_HOME}\" = \"\$(docker-java-home)\" ]")
+              && [ \"${java_home}\" = \"\$(docker-java-home)\" ]")
     ;
-        number_geq(MAJOR_VERSION, "16"),
-        JAVA_HOME = JAVA_HOME,
+        number_geq(major_version, "16"),
+        java_home = java_home,
         run("")
     ).
 
-locale(VARIANT, LANG) :-
+locale(variant, lang) :-
     (
-        is_oracle(VARIANT, ORACLE_VERSION),
-        ORACLE_VERSION = "7",
-        LANG = "en_US.UTF-8"
+        is_oracle(variant, oracle_version),
+        oracle_version = "7",
+        lang = "en_US.UTF-8"
     ;
-        # FIXME: actual else using negation
-        (is_oracle(VARIANT, ORACLE_VERSION), number_gt(ORACLE_VERSION, "7")
-         ; is_alpine(VARIANT, ALPINE_VERSION)
-         ; is_debian(VARIANT)
-         ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
-        LANG = "C.UTF-8"
+        # fixme: actual else using negation
+        (is_oracle(variant, oracle_version), number_gt(oracle_version, "7")
+         ; is_alpine(variant, alpine_version)
+         ; is_debian(variant)
+         ; is_debian_slim(variant, debian_suite)),
+        lang = "C.UTF-8"
     ).
 
-arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER) :-
+arch_commands(variant, arch_printer, amd64_match, arm64_match, getter) :-
     (
-        # Feature idea: underscore syntax when you don't care about a binding, e.g. is_alpine(VARIANT, _)
-        is_alpine(VARIANT, ALPINE_VERSION),
-        ARCH_PRINTER = "apk --print-arch",
-        AMD64_MATCH = "x86_64",
-        ARM64_MATCH = "aarch64",
-        GETTER = "wget -O"
+        # feature idea: underscore syntax when you don't care about a binding, e.g. is_alpine(variant, _)
+        is_alpine(variant, alpine_version),
+        arch_printer = "apk --print-arch",
+        amd64_match = "x86_64",
+        arm64_match = "aarch64",
+        getter = "wget -o"
     ;
-        is_oracle(VARIANT, ORACLE_VERSION),
-        ARCH_PRINTER = "objdump=\"$(command -v objdump)\" && objdump --file-headers \"$objdump\" | awk -F '[:,]+[[:space:]]+' '$1 == \"architecture\" { print $2 }'",
-        AMD64_MATCH = "i386:x86-64",
-        ARM64_MATCH = "aarch64",
-        GETTER = "curl -fL -o"
+        is_oracle(variant, oracle_version),
+        arch_printer = "objdump=\"$(command -v objdump)\" && objdump --file-headers \"$objdump\" | awk -f '[:,]+[[:space:]]+' '$1 == \"architecture\" { print $2 }'",
+        amd64_match = "i386:x86-64",
+        arm64_match = "aarch64",
+        getter = "curl -fl -o"
     ;
         # FIXME: actual else
-        (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
-        ARCH_PRINTER = "dpkg --print-architecture",
-        AMD64_MATCH = "amd64",
-        ARM64_MATCH = "arm64",
-        GETTER = "wget --progress=dot:giga -O"
+        (is_debian(variant) ; is_debian_slim(variant, debian_suite)),
+        arch_printer = "dpkg --print-architecture",
+        amd64_match = "amd64",
+        arm64_match = "arm64",
+        getter = "wget --progress=dot:giga -o"
     ).
 
-# Selects base image and runs relevant initial commands to prepare it.
-base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE) :-
+# selects base image and runs relevant initial commands to prepare it.
+base_image(major_version, variant, java_home, java_type) :-
     (
-        JAVA_TYPE = JAVA_TYPE,
-        is_alpine(VARIANT, ALPINE_VERSION),
-        from(f"alpine:${ALPINE_VERSION}"),
-        # NOTE: bash added for entrypoint script, it's NOT present in the real OpenJDK
+        java_type = java_type,
+        is_alpine(variant, alpine_version),
+        from(f"alpine:${alpine_version}"),
+        # NOTE: bash added for entrypoint script, it's not present in the real openjdk
         run("apk add --no-cache java-cacerts --upgrade bash"),
-        JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}"
+        java_home = f"/opt/openjdk-${major_version}"
     ;
-        JAVA_TYPE = JAVA_TYPE,
-        is_oracle(VARIANT, ORACLE_VERSION),
-        oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION),
-        from(f"oraclelinux:${ORACLE_VERSION}-slim"),
+        java_type = java_type,
+        is_oracle(variant, oracle_version),
+        oracle_commands(installer, cleaner, oracle_version),
+        from(f"oraclelinux:${oracle_version}-slim"),
         run(f"set -eux; \
-              ${INSTALLER} gzip tar binutils freetype fontconfig; \
-              ${CLEANER}"),
-        JAVA_HOME = f"/usr/java/openjdk-${MAJOR_VERSION}"
+              ${installer} gzip tar binutils freetype fontconfig; \
+              ${cleaner}"),
+        java_home = f"/usr/java/openjdk-${major_version}"
     ;
         # FIXME: else debian, although there are more steps so it would act as an else.
-        (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
-        debian_image(VARIANT, JAVA_TYPE),
-        debian_packages(PACKAGES, VARIANT, MAJOR_VERSION),
+        (is_debian(variant) ; is_debian_slim(variant, debian_suite)),
+        debian_image(variant, java_type),
+        debian_packages(packages, variant, major_version),
         run(f"set -eux; \
               apt-get update; \
-              apt-get install -y --no-install-recommends ${PACKAGES}; \
+              apt-get install -y --no-install-recommends ${packages}; \
               rm -rf /var/lib/apt/lists/*"),
-        JAVA_HOME = f"/usr/local/openjdk-${MAJOR_VERSION}",
-        backwards_compatibility(MAJOR_VERSION, JAVA_HOME)
+        java_home = f"/usr/local/openjdk-${major_version}",
+        backwards_compatibility(major_version, java_home)
     ).
 
-gpg_check(VARIANT) :-
+gpg_check(variant) :-
     "0" = "0". # TODO
 
-extract_bin(JAVA_HOME) :-
-    run(f"mkdir -p ${JAVA_HOME}; \
+extract_bin(java_home) :-
+    run(f"mkdir -p ${java_home}; \
           tar --extract \
                   --file openjdk.tgz \
-                  --directory \"${JAVA_HOME}\" \
+                  --directory \"${java_home}\" \
                   --strip-components 1 \
                   --no-same-owner \
           ; \
           rm openjdk.tgz*;").
 
-handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
-    arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER),
+handle_binary(variant, amd64_url, arm64_url, java_home) :-
+    arch_commands(variant, arch_printer, amd64_match, arm64_match, getter),
     (
         (
             # TODO: choose package based on source
-            is_debian_slim(VARIANT, DEBIAN_SUITE),
-            PREFETCH_COMMAND = "savedAptMark=\"$(apt-mark showmanual)\"; \
+            is_debian_slim(variant, debian_suite),
+            prefetch_command = "savedAptMark=\"$(apt-mark showmanual)\"; \
                                 apt-get update; \
                                 apt-get install -y --no-install-recommends \
                                     dirmngr gnupg wget; \
                                 rm -rf /var/lib/apt/lists/*;",
-            POSTFETCH_COMMAND = "apt-mark auto '.*' > /dev/null; \
+            postfetch_command = "apt-mark auto '.*' > /dev/null; \
                                  [ -z \"$savedAptMark\" ] || apt-mark manual $savedAptMark > /dev/null; \
                                  apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false;"
         ;
             # FIXME: proper else
-            (is_alpine(VARIANT, ALPINE_VERSION) ; is_oracle(VARIANT, ORACLE_VERSION) ; is_debian(VARIANT)),
+            (is_alpine(variant, alpine_version) ; is_oracle(variant, oracle_version) ; is_debian(variant)),
             # no-ops
-            PREFETCH_COMMAND = ":;",
-            POSTFETCH_COMMAND = ":;"
+            prefetch_command = ":;",
+            postfetch_command = ":;"
         ),
         run(f"set -eux; \
-              ${PREFETCH_COMMAND} \
-              arch=\"\$(${ARCH_PRINTER})\"; \
+              ${prefetch_command} \
+              arch=\"\$(${arch_printer})\"; \
               case \"\$arch\" in \
-                  '${AMD64_MATCH}') \
-                      downloadUrl='${AMD64_URL}'; \
+                  '${amd64_match}') \
+                      downloadUrl='${amd64_url}'; \
                       ;; \
-                  '${ARM64_MATCH}') \
-                      downloadUrl='${ARM64_URL}'; \
+                  '${arm64_match}') \
+                      downloadUrl='${arm64_url}'; \
                       ;; \
                   *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
               esac; \
-              ${GETTER} openjdk.tgz \"\$downloadUrl\"; \
-              ${POSTFETCH_COMMAND}"),
+              ${getter} openjdk.tgz \"\$downloadUrl\"; \
+              ${postfetch_command}"),
         # TODO: SHA256 checksum
-        gpg_check(VARIANT), # NOTE: the postfetch command should actually go after this, but we need the env vars
-        extract_bin(JAVA_HOME)
+        gpg_check(variant), # NOTE: the postfetch command should actually go after this, but we need the env vars
+        extract_bin(java_home)
     ).
 
-ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
-    MAJOR_VERSION = MAJOR_VERSION, # More groundness inconvenience here.
-    JAVA_TYPE = JAVA_TYPE,
+ca_certs(major_version, java_type, variant, java_home) :-
+    major_version = major_version, # more groundness inconvenience here.
+    java_type = java_type,
     (
-        MAJOR_VERSION = "8", JAVA_TYPE = "jdk",
-        CACERTS_FILE = f"${JAVA_HOME}/jre/lib/security/cacerts"
+        major_version = "8", java_type = "jdk",
+        cacerts_file = f"${java_home}/jre/lib/security/cacerts"
     ;
-        (number_gt(MAJOR_VERSION, "8") ; JAVA_TYPE = "jre"),
-        CACERTS_FILE = f"${JAVA_HOME}/lib/security/cacerts"
+        (number_gt(major_version, "8") ; java_type = "jre"),
+        cacerts_file = f"${java_home}/lib/security/cacerts"
     ),
     (
-        is_alpine(VARIANT, ALPINE_VERSION),
-        run(f"rm -rf \"${CACERTS_FILE}\"; \
-              ln -sT /etc/ssl/certs/java/cacerts \"${CACERTS_FILE}\";")
+        is_alpine(variant, alpine_version),
+        run(f"rm -rf \"${cacerts_file}\"; \
+              ln -st /etc/ssl/certs/java/cacerts \"${cacerts_file}\";")
     ;
-        is_oracle(VARIANT, ORACLE_VERSION),
-        run(f"rm -rf \"${CACERTS_FILE}\"; \
-              ln -sT /etc/pki/ca-trust/extracted/java/cacerts \"${CACERTS_FILE}\"; \
+        is_oracle(variant, oracle_version),
+        run(f"rm -rf \"${cacerts_file}\"; \
+              ln -st /etc/pki/ca-trust/extracted/java/cacerts \"${cacerts_file}\"; \
               \
-              ln -sfT \"${JAVA_HOME}\" /usr/java/default; \
-              ln -sfT \"${JAVA_HOME}\" /usr/java/latest; \
-              for bin in \"${JAVA_HOME}/bin/\"*; do \
+              ln -sft \"${java_home}\" /usr/java/default; \
+              ln -sft \"${java_home}\" /usr/java/latest; \
+              for bin in \"${java_home}/bin/\"*; do \
               base=\"\$(basename \"\$bin\")\"; \
               [ ! -e \"/usr/bin/\$base\" ]; \
               alternatives --install \"/usr/bin/\$base\" \"\$base\" \"\$bin\" 20000; \
               done;")
     ;
-        (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
+        (is_debian(variant) ; is_debian_slim(variant, debian_suite)),
         run(f"{ \
                   echo '#!/usr/bin/env bash'; \
                   echo 'set -Eeuo pipefail'; \
-                  echo 'trust extract --overwrite --format=java-cacerts --filter=ca-anchors --purpose=server-auth \"${CACERTS_FILE}\"'; \
+                  echo 'trust extract --overwrite --format=java-cacerts --filter=ca-anchors --purpose=server-auth \"${cacerts_file}\"'; \
               } > /etc/ca-certificates/update.d/docker-openjdk; \
               chmod +x /etc/ca-certificates/update.d/docker-openjdk; \
               /etc/ca-certificates/update.d/docker-openjdk; \
               \
-              find \"${JAVA_HOME}/lib\" -name '*.so' -exec dirname '{}' ';' | sort -u > /etc/ld.so.conf.d/docker-openjdk.conf; \
+              find \"${java_home}/lib\" -name '*.so' -exec dirname '{}' ';' | sort -u > /etc/ld.so.conf.d/docker-openjdk.conf; \
               ldconfig;")
     ).
 
-smoke_tests(MAJOR_VERSION, JAVA_TYPE) :-
+smoke_tests(major_version, java_type) :-
     (
-        MAJOR_VERSION = "8", JAVA_TYPE = "jdk",
-        COMMAND = "javac -version; java -version"
+        major_version = "8", java_type = "jdk",
+        command = "javac -version; java -version"
     ;
-        MAJOR_VERSION = "8", JAVA_TYPE = "jre",
-        COMMAND = "java -version"
+        major_version = "8", java_type = "jre",
+        command = "java -version"
     ;
-        number_gt(MAJOR_VERSION, "8"),
+        number_gt(major_version, "8"),
         (
-            JAVA_TYPE = "jdk",
+            java_type = "jdk",
             COMMAND = "java -Xshare:dump; \
                        fileEncoding=\"$(echo 'System.out.println(System.getProperty(\"file.encoding\"))' | jshell -s -)\"; [ \"$fileEncoding\" = 'UTF-8' ]; rm -rf ~/.java; \
                        javac --version; \
                        java --version"
         ;
-            JAVA_TYPE = "jre",
-            COMMAND = "java -Xshare:dump; java --version"
+            java_type = "jre",
+            command = "java -Xshare:dump; java --version"
         )
     ),
-    run(COMMAND).
+    run(command).
 
-entry_sh(MAJOR_VERSION, JAVA_TYPE) :-
+entry_sh(major_version, java_type) :-
     (
-        MAJOR_VERSION = "8", JAVA_TYPE = JAVA_TYPE,
-        COMMAND = "bash" # HACK: Probably shouldn't assume bash
+        major_version = "8", java_type = java_type,
+        command = "bash" # HACK: probably shouldn't assume bash
     ;
-        number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jre",
-        COMMAND = "bash"
+        number_gt(major_version, "8"), java_type = "jre",
+        command = "bash"
     ;
-        number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jdk",
-        COMMAND = "jshell" # jshell only launched if jdk
+        number_gt(major_version, "8"), java_type = "jdk",
+        command = "jshell" # jshell only launched if jdk
     ),
-    run(f"echo '#!/bin/bash' > entry.sh; echo '${COMMAND}' >> entry.sh; chmod +x entry.sh").
+    run(f"echo '#!/bin/bash' > entry.sh; echo '${command}' >> entry.sh; chmod +x entry.sh").
 
-openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) :-
-    openjdk_config(MAJOR_VERSION, VERSION,
-                   JAVA_TYPE,
-                   VARIANT,
-                   AMD64_URL, ARM64_URL,
-                   SOURCE),
+openjdk_setup(major_version, version, java_type, variant, amd64_url, arm64_url) :-
+    openjdk_config(major_version, version,
+                   java_type,
+                   variant,
+                   amd64_url, arm64_url,
+                   source),
 
-    base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE)
-        ::append_path(f"${JAVA_HOME}/bin")
-        ::set_env("JAVA_HOME", JAVA_HOME)
-        ::set_env("LANG", LANG)
-        ::set_env("JAVA_VERSION", VERSION),
-    locale(VARIANT, LANG),
+    base_image(major_version, variant, java_home, java_type)
+        ::append_path(f"${java_home}/bin")
+        ::set_env("java_home", java_home)
+        ::set_env("lang", lang)
+        ::set_env("java_version", version),
+    locale(variant, lang),
     (
-        handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME),
-        ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
-        smoke_tests(MAJOR_VERSION, JAVA_TYPE)
+        handle_binary(variant, amd64_url, arm64_url, java_home),
+        ca_certs(major_version, java_type, variant, java_home),
+        smoke_tests(major_version, java_type)
     )::merge,
-    entry_sh(MAJOR_VERSION, JAVA_TYPE).
+    entry_sh(major_version, java_type).
 
-openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
+openjdk(major_version, java_type, variant) :-
     (
-        MAJOR_VERSION = MAJOR_VERSION,
-        JAVA_TYPE = JAVA_TYPE,
-        VARIANT = f"windows/${WINDOWS_IMAGE}",
-        "0" = "1", # TODO: no windows support atm.
+        major_version = major_version,
+        java_type = java_type,
+        variant = f"windows/${windows_image}",
+        "0" = "1", # todo: no windows support atm.
         from("failing-container:latest")
     ;
-        openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)
+        openjdk_setup(major_version, version, java_type, variant, amd64_url, arm64_url)
             ::set_entrypoint("./entry.sh")
     ).
 
