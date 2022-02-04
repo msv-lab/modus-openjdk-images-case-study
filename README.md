@@ -24,6 +24,12 @@ As shown above, it took over 18 minutes to build 40 images with an empty build c
 
 `modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` should build all available images.
 
+### System Specification for Results
+
+All builds & experiments described in this document were performed on a machine with:
+- Memory: 8GiB System memory
+- Processor: [Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz](https://www.intel.co.uk/content/www/uk/en/products/sku/199278/intel-core-i510400f-processor-12m-cache-up-to-4-30-ghz/specifications.html) - with 6 total cores.
+
 ---
 
 # Stats
