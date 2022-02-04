@@ -69,7 +69,8 @@ We used [dive](https://github.com/wagoodman/dive) which provides an estimate of 
 
 ## Compactness
 
-A [single 300-350 line file](./linux.Modusfile) is all that's required to build this through Modus. In contrast, [the templating approach](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template) requires a 330 line template file in addition to a shell script and json configuration that add over 100 more lines.
+- A [single 315 line file](./linux.Modusfile) holds the conditional logic that defines all the varying image builds.
+- In contrast, the templating approach requires a [332 line template file](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), a [77 line script](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh) to apply the template, and a [140 line file](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk) that defines some helper functions using awk and jq.
 
 # OpenJDK Configuration
 
