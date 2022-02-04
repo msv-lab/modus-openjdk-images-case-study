@@ -9,18 +9,18 @@ oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION) :-
         ORACLE_VERSION = "7",
         INSTALLER = "yum install -y",
         CLEANER = "rm -rf /var/cache/yum"
-    )
     ;
-    (
         number_gt(ORACLE_VERSION, "7"),
         INSTALLER = "microdnf install",
         CLEANER = "microdnf clean all"
     ).
 
 debian_suffix(SUFFIX, JAVA_TYPE) :-
-    (JAVA_TYPE = "jdk", SUFFIX = "-scm")
+    (
+        JAVA_TYPE = "jdk", SUFFIX = "-scm"
     ;
-    (JAVA_TYPE = "jre", SUFFIX = "-curl").
+        JAVA_TYPE = "jre", SUFFIX = "-curl"
+    ).
 debian_image(VARIANT, JAVA_TYPE) :-
     (
         # FIXME: some weirdness with groundness check in disjunction
@@ -29,9 +29,7 @@ debian_image(VARIANT, JAVA_TYPE) :-
         is_debian_slim(VARIANT, DEBIAN_SUITE),
         IMAGE_NAME = f"debian:${DEBIAN_SUITE}-slim",
         from(IMAGE_NAME)
-    )
     ;
-    (
         is_debian(VARIANT),
         debian_suffix(SUFFIX, JAVA_TYPE),
         IMAGE_NAME = f"buildpack-deps:${VARIANT}${SUFFIX}",
@@ -42,15 +40,11 @@ debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
         MAJOR_VERSION = MAJOR_VERSION,
         is_debian_slim(VARIANT, DEBIAN_SUITE),
         PACKAGES = "ca-certificates p11-kit"
-    )
     ;
-    (
         is_debian(VARIANT),
         number_geq(MAJOR_VERSION, "13"),
         PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit"
-    )
     ;
-    (
         is_debian(VARIANT),
         number_gt("13", MAJOR_VERSION),
         PACKAGES = "bzip2 unzip xz-utils fontconfig libfreetype6 ca-certificates p11-kit"
@@ -63,9 +57,7 @@ backwards_compatibility(MAJOR_VERSION, JAVA_HOME) :-
         run(f"{ echo '#/bin/sh'; echo 'echo \"${JAVA_HOME}\"'; } > /usr/local/bin/docker-java-home \
               && chmod +x /usr/local/bin/docker-java-home \
               && [ \"${JAVA_HOME}\" = \"\$(docker-java-home)\" ]")
-    )
     ;
-    (
         number_geq(MAJOR_VERSION, "16"),
         JAVA_HOME = JAVA_HOME,
         run("")
@@ -76,9 +68,7 @@ locale(VARIANT, LANG) :-
         is_oracle(VARIANT, ORACLE_VERSION),
         ORACLE_VERSION = "7",
         LANG = "en_US.UTF-8"
-    )
     ;
-    (
         # FIXME: actual else using negation
         (is_oracle(VARIANT, ORACLE_VERSION), number_gt(ORACLE_VERSION, "7")
          ; is_alpine(VARIANT, ALPINE_VERSION)
@@ -95,17 +85,13 @@ arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER) :-
         AMD64_MATCH = "x86_64",
         ARM64_MATCH = "aarch64",
         GETTER = "wget -O"
-    )
     ;
-    (
         is_oracle(VARIANT, ORACLE_VERSION),
         ARCH_PRINTER = "objdump=\"$(command -v objdump)\" && objdump --file-headers \"$objdump\" | awk -F '[:,]+[[:space:]]+' '$1 == \"architecture\" { print $2 }'",
         AMD64_MATCH = "i386:x86-64",
         ARM64_MATCH = "aarch64",
         GETTER = "curl -fL -o"
-    )
     ;
-    (
         # FIXME: actual else
         (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
         ARCH_PRINTER = "dpkg --print-architecture",
@@ -123,9 +109,7 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE) :-
         # NOTE: bash added for entrypoint script, it's NOT present in the real OpenJDK
         run("apk add --no-cache java-cacerts --upgrade bash"),
         JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}"
-    )
     ;
-    (
         JAVA_TYPE = JAVA_TYPE,
         is_oracle(VARIANT, ORACLE_VERSION),
         oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION),
@@ -134,9 +118,7 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE) :-
               ${INSTALLER} gzip tar binutils freetype fontconfig; \
               ${CLEANER}"),
         JAVA_HOME = f"/usr/java/openjdk-${MAJOR_VERSION}"
-    )
     ;
-    (
         # FIXME: else debian, although there are more steps so it would act as an else.
         (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
         debian_image(VARIANT, JAVA_TYPE),
@@ -304,9 +286,7 @@ openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
         VARIANT = f"windows/${WINDOWS_IMAGE}",
         "0" = "1", # TODO: no windows support atm.
         from("failing-container:latest")
-    )
     ;
-    (
         openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)
             ::set_entrypoint("./entry.sh")
     ).
