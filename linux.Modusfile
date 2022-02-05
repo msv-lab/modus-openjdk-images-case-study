@@ -23,9 +23,6 @@ debian_suffix(SUFFIX, JAVA_TYPE) :-
     ).
 debian_image(VARIANT, JAVA_TYPE) :-
     (
-        # FIXME: some weirdness with groundness check in disjunction
-        # Maybe I should remove unused variables from the head when translating to IR?
-        JAVA_TYPE = JAVA_TYPE,
         is_debian_slim(VARIANT, DEBIAN_SUITE),
         IMAGE_NAME = f"debian:${DEBIAN_SUITE}-slim",
         from(IMAGE_NAME)
@@ -37,7 +34,6 @@ debian_image(VARIANT, JAVA_TYPE) :-
     ).
 debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
     (
-        MAJOR_VERSION = MAJOR_VERSION,
         is_debian_slim(VARIANT, DEBIAN_SUITE),
         PACKAGES = "ca-certificates p11-kit"
     ;
@@ -103,14 +99,12 @@ arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER) :-
 # Selects base image and runs relevant initial commands to prepare it.
 base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE) :-
     (
-        JAVA_TYPE = JAVA_TYPE,
         is_alpine(VARIANT, ALPINE_VERSION),
         from(f"alpine:${ALPINE_VERSION}"),
         # NOTE: bash added for entrypoint script, it's NOT present in the real OpenJDK
         run("apk add --no-cache java-cacerts --upgrade bash"),
         JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}"
     ;
-        JAVA_TYPE = JAVA_TYPE,
         is_oracle(VARIANT, ORACLE_VERSION),
         oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION),
         from(f"oraclelinux:${ORACLE_VERSION}-slim"),
@@ -185,8 +179,6 @@ handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
     ).
 
 ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
-    MAJOR_VERSION = MAJOR_VERSION, # More groundness inconvenience here.
-    JAVA_TYPE = JAVA_TYPE,
     (
         MAJOR_VERSION = "8", JAVA_TYPE = "jdk",
         CACERTS_FILE = f"${JAVA_HOME}/jre/lib/security/cacerts"
@@ -281,11 +273,10 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
 
 openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
     (
-        MAJOR_VERSION = MAJOR_VERSION,
-        JAVA_TYPE = JAVA_TYPE,
         VARIANT = f"windows/${WINDOWS_IMAGE}",
-        "0" = "1", # TODO: no windows support atm.
-        from("failing-container:latest")
+        "0" = "1", # NOTE: no windows support atm. So this will intentionally always fail.
+        openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)
+            ::set_entrypoint("./entry.sh")
     ;
         openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)
             ::set_entrypoint("./entry.sh")
