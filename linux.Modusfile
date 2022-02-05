@@ -235,7 +235,7 @@ smoke_tests(major_version, java_type) :-
         number_gt(major_version, "8"),
         (
             java_type = "jdk",
-            COMMAND = "java -Xshare:dump; \
+            command = "java -Xshare:dump; \
                        fileEncoding=\"$(echo 'System.out.println(System.getProperty(\"file.encoding\"))' | jshell -s -)\"; [ \"$fileEncoding\" = 'UTF-8' ]; rm -rf ~/.java; \
                        javac --version; \
                        java --version"
