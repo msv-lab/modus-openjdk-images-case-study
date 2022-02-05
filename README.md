@@ -45,12 +45,11 @@ All builds & experiments described in this document were performed on a machine 
 
 ## Linux - All Major Versions, Java Types, and Variants
 
-![image](https://user-images.githubusercontent.com/46009390/151715965-33c7e905-5e93-481b-ac26-bce68aa6c091.png)
+![image](https://user-images.githubusercontent.com/46009390/152651786-853f2f4b-bbc6-4c8e-86cf-23cc3a9b62d9.png)
 
-As shown above, we are able to solve and build all 46 combinations[^46] of Linux-based OpenJDK images in under 15 minutes on a single machine.
+
+As shown above, we are able to solve and build all 42 combinations of Linux-based OpenJDK images in 13:34.48 on a single machine.
 This is from scratch, i.e. the time taken for SLD resolution + time taken for parallel build with an empty docker build cache.
-
-[^46]: We built 46 images rather than 40 since the OpenJDK Official Images program does not provide all combinations, possibly for security reasons or otherwise. However, we build a superset, so we do build all that they provide.
 
 ## Linux - All Major Versions of JDK on slim-bullseye
 
