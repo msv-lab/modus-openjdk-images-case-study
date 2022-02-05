@@ -84,20 +84,20 @@ arch_commands(variant, arch_printer, amd64_match, arm64_match, getter) :-
         arch_printer = "apk --print-arch",
         amd64_match = "x86_64",
         arm64_match = "aarch64",
-        getter = "wget -O"
+        getter = "wget -o"
     ;
         is_oracle(variant, oracle_version),
-        arch_printer = "objdump=\"$(command -v objdump)\" && objdump --file-headers \"$objdump\" | awk -F '[:,]+[[:space:]]+' '$1 == \"architecture\" { print $2 }'",
+        arch_printer = "objdump=\"$(command -v objdump)\" && objdump --file-headers \"$objdump\" | awk -f '[:,]+[[:space:]]+' '$1 == \"architecture\" { print $2 }'",
         amd64_match = "i386:x86-64",
         arm64_match = "aarch64",
-        getter = "curl -fL -o"
+        getter = "curl -fl -o"
     ;
         # FIXME: actual else
         (is_debian(variant) ; is_debian_slim(variant, debian_suite)),
         arch_printer = "dpkg --print-architecture",
         amd64_match = "amd64",
         arm64_match = "arm64",
-        getter = "wget --progress=dot:giga -O"
+        getter = "wget --progress=dot:giga -o"
     ).
 
 # selects base image and runs relevant initial commands to prepare it.
@@ -197,14 +197,14 @@ ca_certs(major_version, java_type, variant, java_home) :-
     (
         is_alpine(variant, alpine_version),
         run(f"rm -rf \"${cacerts_file}\"; \
-              ln -sT /etc/ssl/certs/java/cacerts \"${cacerts_file}\";")
+              ln -st /etc/ssl/certs/java/cacerts \"${cacerts_file}\";")
     ;
         is_oracle(variant, oracle_version),
         run(f"rm -rf \"${cacerts_file}\"; \
-              ln -sT /etc/pki/ca-trust/extracted/java/cacerts \"${cacerts_file}\"; \
+              ln -st /etc/pki/ca-trust/extracted/java/cacerts \"${cacerts_file}\"; \
               \
-              ln -sfT \"${java_home}\" /usr/java/default; \
-              ln -sfT \"${java_home}\" /usr/java/latest; \
+              ln -sft \"${java_home}\" /usr/java/default; \
+              ln -sft \"${java_home}\" /usr/java/latest; \
               for bin in \"${java_home}/bin/\"*; do \
               base=\"\$(basename \"\$bin\")\"; \
               [ ! -e \"/usr/bin/\$base\" ]; \
