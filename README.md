@@ -52,9 +52,9 @@ This is from scratch, i.e. the time taken for SLD resolution + time taken for pa
 ## Linux - All Major Versions of JDK on slim-bullseye
 
 An example of a typical use case, such as building all versions of JDK on a particular base image:
-![image](https://user-images.githubusercontent.com/46009390/152064170-e59cba81-beac-411e-b078-1e64f5f186ed.png)
+![image](https://user-images.githubusercontent.com/46009390/152662841-8d266c69-96a7-42d7-b399-386b83de5668.png)
 
-Again, this is from an empty build cache. We're able to build 5 versions in under 2 minutes.
+Again, this is from an empty build cache. We're able to build 5 versions in 1:40.30.
 
 ## Efficiency
 
