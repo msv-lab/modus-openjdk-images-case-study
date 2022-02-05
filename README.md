@@ -60,7 +60,7 @@ Again, this is from an empty build cache. We're able to build 5 versions in unde
 
 We used [dive](https://github.com/wagoodman/dive) which provides an estimate of image efficiency[^1]. All the images we built scored over 95% image efficiency.
 
-![image](https://user-images.githubusercontent.com/46009390/151718407-ba89e8d3-f2be-4ffe-a861-8cbb211395c0.png)
+![image](https://user-images.githubusercontent.com/46009390/152662059-67ecc65e-6b41-4dc8-b18a-082e98597bd5.png)
 
 [^1]: Wasted space such as duplicating files across layers count as an 'inefficiency'.
 
