@@ -15,18 +15,18 @@ We compared performance of the official Dockerfiles and our Modusfile. To provid
 
 We executed Modus using the command `modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. 
 
-![image](https://user-images.githubusercontent.com/46009390/152651786-853f2f4b-bbc6-4c8e-86cf-23cc3a9b62d9.png)
+![image](https://user-images.githubusercontent.com/46009390/152788053-4060e05c-82ee-4039-9cfc-292a26dd1a4e.png)
 
 The experiments were executed [Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz](https://www.intel.co.uk/content/www/uk/en/products/sku/199278/intel-core-i510400f-processor-12m-cache-up-to-4-30-ghz/specifications.html) with 6 total cores, and with 8GiB of RAM. All builds were executed with empty Docker build cache.
 
-The baseline, building images sequentially from the official Dockerfiles, took __16:46__ minutes to build 42 images. Our approach, using Modus, took __13:34__ minutes to build the same 42 images. The performance improvements from using Modus is due to the parallel build performed by our front-end to BuildKit.
+The baseline, building images sequentially from the official Dockerfiles, took __16:46__ minutes to build 42 images. Our approach, using Modus, took __8:53__ minutes to build the same 42 images. The performance improvements from using Modus is due to the parallel build performed by our front-end to BuildKit.
 
 ## Building Subset of Images
 
 An example of a typical use case, such as building all versions of JDK on a particular base image (slim-bullseye):
-![image](https://user-images.githubusercontent.com/46009390/152662841-8d266c69-96a7-42d7-b399-386b83de5668.png)
+![image](https://user-images.githubusercontent.com/46009390/152847430-2093bb53-35bc-4583-b273-f1e7f1cdc5d9.png)
 
-We're able to build 5 versions in 1:40 minutes.
+We're able to build 5 versions in 1:31 minutes.
 
 ## Image Efficiency
 
