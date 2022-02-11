@@ -15,11 +15,11 @@ We compared performance of the official Dockerfiles and our Modusfile. To provid
 
 We executed Modus using the command `modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. 
 
-![image](https://user-images.githubusercontent.com/46009390/152788053-4060e05c-82ee-4039-9cfc-292a26dd1a4e.png)
+![image](https://user-images.githubusercontent.com/46009390/153640482-1b76c89b-8f72-4337-83e3-777243883c56.png)
 
 The experiments were executed [Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz](https://www.intel.co.uk/content/www/uk/en/products/sku/199278/intel-core-i510400f-processor-12m-cache-up-to-4-30-ghz/specifications.html) with 6 total cores, and with 8GiB of RAM. All builds were executed with empty Docker build cache.
 
-The baseline, building images sequentially from the official Dockerfiles, took __16:46__ minutes to build 42 images. Our approach, using Modus, took __8:53__ minutes to build the same 42 images. The performance improvements from using Modus is due to the parallel build performed by our front-end to BuildKit.
+The baseline, building images sequentially from the official Dockerfiles, took __16:46__ minutes to build 42 images. Our approach, using Modus, took __6:53__ minutes to build the same 42 images. The performance improvements from using Modus is due to the parallel build performed by our front-end to BuildKit.
 
 ## Building Subset of Images
 
