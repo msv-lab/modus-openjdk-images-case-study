@@ -73,29 +73,6 @@ locale(VARIANT, LANG) :-
         LANG = "C.UTF-8"
     ).
 
-arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER) :-
-    (
-        # Feature idea: underscore syntax when you don't care about a binding, e.g. is_alpine(VARIANT, _)
-        is_alpine(VARIANT, ALPINE_VERSION),
-        ARCH_PRINTER = "apk --print-arch",
-        AMD64_MATCH = "x86_64",
-        ARM64_MATCH = "aarch64",
-        GETTER = "wget -O"
-    ;
-        is_oracle(VARIANT, ORACLE_VERSION),
-        ARCH_PRINTER = "objdump=\"$(command -v objdump)\" && objdump --file-headers \"$objdump\" | awk -F '[:,]+[[:space:]]+' '$1 == \"architecture\" { print $2 }'",
-        AMD64_MATCH = "i386:x86-64",
-        ARM64_MATCH = "aarch64",
-        GETTER = "curl -fL -o"
-    ;
-        # FIXME: actual else
-        (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
-        ARCH_PRINTER = "dpkg --print-architecture",
-        AMD64_MATCH = "amd64",
-        ARM64_MATCH = "arm64",
-        GETTER = "wget --progress=dot:giga -O"
-    ).
-
 # Selects base image and runs relevant initial commands to prepare it.
 base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE) :-
     (
@@ -138,45 +115,26 @@ extract_bin(JAVA_HOME) :-
           ; \
           rm openjdk.tgz*;").
 
-handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
-    arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER),
-    (
-        (
-            # TODO: choose package based on source
-            is_debian_slim(VARIANT, DEBIAN_SUITE),
-            PREFETCH_COMMAND = "savedAptMark=\"$(apt-mark showmanual)\"; \
-                                apt-get update; \
-                                apt-get install -y --no-install-recommends \
-                                    dirmngr gnupg wget; \
-                                rm -rf /var/lib/apt/lists/*;",
-            POSTFETCH_COMMAND = "apt-mark auto '.*' > /dev/null; \
-                                 [ -z \"$savedAptMark\" ] || apt-mark manual $savedAptMark > /dev/null; \
-                                 apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false;"
-        ;
-            # FIXME: proper else
-            (is_alpine(VARIANT, ALPINE_VERSION) ; is_oracle(VARIANT, ORACLE_VERSION) ; is_debian(VARIANT)),
-            # no-ops
-            PREFETCH_COMMAND = ":;",
-            POSTFETCH_COMMAND = ":;"
-        ),
-        run(f"set -eux; \
-              ${PREFETCH_COMMAND} \
-              arch=\"\$(${ARCH_PRINTER})\"; \
-              case \"\$arch\" in \
-                  '${AMD64_MATCH}') \
-                      downloadUrl='${AMD64_URL}'; \
-                      ;; \
-                  '${ARM64_MATCH}') \
-                      downloadUrl='${ARM64_URL}'; \
-                      ;; \
-                  *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
-              esac; \
-              ${GETTER} openjdk.tgz \"\$downloadUrl\"; \
-              ${POSTFETCH_COMMAND}"),
-        # TODO: SHA256 checksum
-        gpg_check(VARIANT), # NOTE: the postfetch command should actually go after this, but we need the env vars
-        extract_bin(JAVA_HOME)
-    ).
+install_bin(AMD64_URL, ARM64_URL, JAVA_HOME) :-
+    ARCH_PRINTER = "apk --print-arch",
+    AMD64_MATCH = "x86_64",
+    ARM64_MATCH = "aarch64",
+    GETTER = "wget -O",
+
+    from("alpine:latest"),
+    run(f"set -eux; \
+          arch=\"\$(${ARCH_PRINTER})\"; \
+          case \"\$arch\" in \
+              '${AMD64_MATCH}') \
+                  downloadUrl='${AMD64_URL}'; \
+                  ;; \
+              '${ARM64_MATCH}') \
+                  downloadUrl='${ARM64_URL}'; \
+                  ;; \
+              *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
+          esac; \
+          ${GETTER} openjdk.tgz \"\$downloadUrl\";"),
+    extract_bin(JAVA_HOME).
 
 ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
     (
@@ -264,8 +222,8 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
         ::set_env("LANG", LANG)
         ::set_env("JAVA_VERSION", VERSION),
     locale(VARIANT, LANG),
+    install_bin(AMD64_URL, ARM64_URL, JAVA_HOME)::copy(JAVA_HOME, JAVA_HOME),
     (
-        handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME),
         ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
         smoke_tests(MAJOR_VERSION, JAVA_TYPE)
     )::merge,
