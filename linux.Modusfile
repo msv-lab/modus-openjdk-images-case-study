@@ -74,30 +74,30 @@ locale(VARIANT, LANG) :-
     ).
 
 # Selects base image and runs relevant initial commands to prepare it.
-base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE) :-
+base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, POST_FROM_COMMAND) :-
     (
         is_alpine(VARIANT, ALPINE_VERSION),
         from(f"alpine:${ALPINE_VERSION}"),
         # NOTE: bash added for entrypoint script, it's NOT present in the real OpenJDK
-        run("apk add --no-cache java-cacerts --upgrade bash"),
+        POST_FROM_COMMAND = "apk add --no-cache java-cacerts --upgrade bash",
         JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}"
     ;
         is_oracle(VARIANT, ORACLE_VERSION),
         oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION),
         from(f"oraclelinux:${ORACLE_VERSION}-slim"),
-        run(f"set -eux; \
-              ${INSTALLER} gzip tar binutils freetype fontconfig; \
-              ${CLEANER}"),
+        POST_FROM_COMMAND = f"set -eux; \
+                              ${INSTALLER} gzip tar binutils freetype fontconfig; \
+                              ${CLEANER}",
         JAVA_HOME = f"/usr/java/openjdk-${MAJOR_VERSION}"
     ;
         # FIXME: else debian, although there are more steps so it would act as an else.
         (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
         debian_image(VARIANT, JAVA_TYPE),
         debian_packages(PACKAGES, VARIANT, MAJOR_VERSION),
-        run(f"set -eux; \
-              apt-get update; \
-              apt-get install -y --no-install-recommends ${PACKAGES}; \
-              rm -rf /var/lib/apt/lists/*"),
+        POST_FROM_COMMAND = f"set -eux; \
+                              apt-get update; \
+                              apt-get install -y --no-install-recommends ${PACKAGES}; \
+                              rm -rf /var/lib/apt/lists/*",
         JAVA_HOME = f"/usr/local/openjdk-${MAJOR_VERSION}",
         backwards_compatibility(MAJOR_VERSION, JAVA_HOME)
     ).
@@ -215,15 +215,15 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
                    VARIANT,
                    AMD64_URL, ARM64_URL,
                    SOURCE),
-
-    base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE)
+    base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, POST_BASE_COMMAND)
         ::append_path(f"${JAVA_HOME}/bin")
         ::set_env("JAVA_HOME", JAVA_HOME)
         ::set_env("LANG", LANG)
         ::set_env("JAVA_VERSION", VERSION),
-    locale(VARIANT, LANG),
-    install_bin(AMD64_URL, ARM64_URL, JAVA_HOME)::copy(JAVA_HOME, JAVA_HOME),
     (
+        run(POST_BASE_COMMAND),
+        locale(VARIANT, LANG),
+        install_bin(AMD64_URL, ARM64_URL, JAVA_HOME)::copy(JAVA_HOME, JAVA_HOME),
         ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
         smoke_tests(MAJOR_VERSION, JAVA_TYPE)
     )::merge,
