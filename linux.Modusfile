@@ -74,18 +74,18 @@ locale(VARIANT, LANG) :-
     ).
 
 # Selects base image and runs relevant initial commands to prepare it.
-base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, POST_FROM_COMMAND) :-
+base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, BASE_SETUP_COMMAND) :-
     (
         is_alpine(VARIANT, ALPINE_VERSION),
         from(f"alpine:${ALPINE_VERSION}"),
         # NOTE: bash added for entrypoint script, it's NOT present in the real OpenJDK
-        POST_FROM_COMMAND = "apk add --no-cache java-cacerts --upgrade bash",
+        BASE_SETUP_COMMAND = "apk add --no-cache java-cacerts --upgrade bash",
         JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}"
     ;
         is_oracle(VARIANT, ORACLE_VERSION),
         oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION),
         from(f"oraclelinux:${ORACLE_VERSION}-slim"),
-        POST_FROM_COMMAND = f"set -eux; \
+        BASE_SETUP_COMMAND = f"set -eux; \
                               ${INSTALLER} gzip tar binutils freetype fontconfig; \
                               ${CLEANER}",
         JAVA_HOME = f"/usr/java/openjdk-${MAJOR_VERSION}"
@@ -94,7 +94,7 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, POST_FROM_COMMAND) :-
         (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
         debian_image(VARIANT, JAVA_TYPE),
         debian_packages(PACKAGES, VARIANT, MAJOR_VERSION),
-        POST_FROM_COMMAND = f"set -eux; \
+        BASE_SETUP_COMMAND = f"set -eux; \
                               apt-get update; \
                               apt-get install -y --no-install-recommends ${PACKAGES}; \
                               rm -rf /var/lib/apt/lists/*",
@@ -121,6 +121,9 @@ install_bin(AMD64_URL, ARM64_URL, JAVA_HOME) :-
     ARM64_MATCH = "aarch64",
     GETTER = "wget -O",
 
+    # It shouldn't really matter that the binary we're downloading/extracting here may not work
+    # on alpine, since we will just copy the extracted files into the correct base image later.
+    # So this is fine as long as we don't try to execute it here.
     from("alpine:latest"),
     run(f"set -eux; \
           arch=\"\$(${ARCH_PRINTER})\"; \
@@ -215,13 +218,13 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
                    VARIANT,
                    AMD64_URL, ARM64_URL,
                    SOURCE),
-    base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, POST_BASE_COMMAND)
+    base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, BASE_SETUP_COMMAND)
         ::append_path(f"${JAVA_HOME}/bin")
         ::set_env("JAVA_HOME", JAVA_HOME)
         ::set_env("LANG", LANG)
         ::set_env("JAVA_VERSION", VERSION),
     (
-        run(POST_BASE_COMMAND),
+        run(BASE_SETUP_COMMAND),
         locale(VARIANT, LANG),
         install_bin(AMD64_URL, ARM64_URL, JAVA_HOME)::copy(JAVA_HOME, JAVA_HOME),
         ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
