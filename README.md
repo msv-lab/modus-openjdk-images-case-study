@@ -8,25 +8,49 @@ The [Docker Official Images](https://github.com/docker-library/official-images) 
 
 A [single 315 line Modusfile](./linux.Modusfile) holds the conditional logic that defines all the varying image builds. In contrast, the templating approach requires a [332 line template file](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), a [77 line script](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh) to apply the template, and a [140 line file](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk) that defines some helper functions using awk and jq, totally 549 LoC.
 
-## Build Time
+## Build Time - 6 core machine & WSL2
 
-We compared performance of the official Dockerfiles and our Modusfile. To provide a baseline for our performance tests, we built the official Dockerfiles sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
+We compared performance of the official Dockerfiles and our Modusfile. To provide a baseline for our performance tests, we first built the official Dockerfiles sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`:
+
 ![image](https://user-images.githubusercontent.com/46009390/152654516-7e6583ca-c52e-42f0-bad9-c89db768b2be.png)
 
-We executed Modus using the command `modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. 
+We also built the Dockerfiles in parallel using GNU's `parallel` (to replicate Modus' approach of parallel builds) `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`:
 
-![image](https://user-images.githubusercontent.com/46009390/153640482-1b76c89b-8f72-4337-83e3-777243883c56.png)
+![image](https://user-images.githubusercontent.com/46009390/153932239-203272f5-2347-40c2-80c3-2c9d9cb8b67f.png)
 
-The experiments were executed [Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz](https://www.intel.co.uk/content/www/uk/en/products/sku/199278/intel-core-i510400f-processor-12m-cache-up-to-4-30-ghz/specifications.html) with 6 total cores, and with 8GiB of RAM. All builds were executed with empty Docker build cache.
+We then executed Modus using the command `time modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. 
 
-The baseline, building images sequentially from the official Dockerfiles, took __16:46__ minutes to build 42 images. Our approach, using Modus, took __6:53__ minutes to build the same 42 images. The performance improvements from using Modus is due to the parallel build performed by our front-end to BuildKit.
+![image](https://user-images.githubusercontent.com/46009390/153933632-b013dd69-04e1-4cd4-b668-7ffedb543d74.png)
+
+These experiments were executed on a [Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz](https://www.intel.co.uk/content/www/uk/en/products/sku/199278/intel-core-i510400f-processor-12m-cache-up-to-4-30-ghz/specifications.html) with 6 total cores, and with 8GiB of RAM.
+The commands were executed under WSL2. All builds were executed with empty Docker build cache.
+
+The baseline, building images _sequentially_ from the official Dockerfiles, took __16:46__ minutes to build 42 images. Building those same 42 images with `parallel` took **5:14** minutes.
+Our approach, using Modus, took **4:54** minutes to build the same 42 images. The performance improvements from using Modus is due to the parallel build performed by our front-end to BuildKit, in addition to an image caching optimization.
+
+## Build Time - AWS EC2 (t2.xlarge)
+
+Full details on the t2.xlarge hardware are [here](https://aws.amazon.com/ec2/instance-types/t2/).
+To account for hardware differences on the t2.xlarge instance, we reran the baseline.
+
+Official Dockerfiles executed in parallel with `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`:
+
+![image](https://user-images.githubusercontent.com/46009390/153929561-ec0f272c-2ea1-404c-a3df-4c0be80091e6.png)
+
+Modusfiles built with `time modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)`:
+
+![image](https://user-images.githubusercontent.com/46009390/153930533-1e7ddee7-a1d3-44c8-bbce-89488cf0458f.png)
+
+The parallel baseline approach took **5m14**, whereas our approach using Modus took **4m55**.
+
 
 ## Building Subset of Images
 
 An example of a typical use case, such as building all versions of JDK on a particular base image (slim-bullseye):
-![image](https://user-images.githubusercontent.com/46009390/152847430-2093bb53-35bc-4583-b273-f1e7f1cdc5d9.png)
 
-We're able to build 5 versions in 1:31 minutes.
+![image](https://user-images.githubusercontent.com/46009390/153935512-c2122052-bae8-44e8-b7ae-2d7a7f3fa226.png)
+
+We're able to build 5 versions in **1:16** minutes.
 
 ## Image Efficiency
 
