@@ -30,10 +30,23 @@ Our approach, using Modus, took **4:54** minutes to build the same 42 images. Th
 
 ### OpenJDK optimizations without Modus
 
-![image](https://user-images.githubusercontent.com/46009390/154812068-780ec660-4613-4d32-916f-c4ee3a3a9ba1.png)
-Total build script took 4m56.
+The official Dockerfiles do not take advantage of either multi-stage builds or the caching which would be easier to implement[^cache] with multi-stage builds.
+Since these are the primary ways Modus improves on performance, we decided to extend the existing OpenJDK approach to implement these optimizations _without Modus_.
 
-TODO: explain.
+![image](https://user-images.githubusercontent.com/46009390/154812068-780ec660-4613-4d32-916f-c4ee3a3a9ba1.png)
+
+The total build script which includes these optimizations took 4m56.
+
+[^cache]: Simply adding multi-stage builds does not give 'free' caching if one builds images in parallel.
+
+### Summary
+
+| Approach | Time |
+|--|--|
+| Official Dockerfiles sequentially | 16m46 |
+| Official Dockerfiles in parallel | 5m14 |
+| Official Dockerfiles w/ our hand-written optimizations | 4m56 |
+| Modus | 4m54 |
 
 ## Build Time - AWS EC2 (t2.xlarge)
 
