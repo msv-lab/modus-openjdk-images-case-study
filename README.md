@@ -28,6 +28,13 @@ The commands were executed under WSL2. All builds were executed with empty Docke
 The baseline, building images _sequentially_ from the official Dockerfiles, took __16:46__ minutes to build 42 images. Building those same 42 images with `parallel` took **5:14** minutes.
 Our approach, using Modus, took **4:54** minutes to build the same 42 images. The performance improvements from using Modus is due to the parallel build performed by our front-end to BuildKit, in addition to an image caching optimization.
 
+### OpenJDK optimizations without Modus
+
+![image](https://user-images.githubusercontent.com/46009390/154812068-780ec660-4613-4d32-916f-c4ee3a3a9ba1.png)
+Total build script took 4m56.
+
+TODO: explain.
+
 ## Build Time - AWS EC2 (t2.xlarge)
 
 Full details on the t2.xlarge hardware are [here](https://aws.amazon.com/ec2/instance-types/t2/).
