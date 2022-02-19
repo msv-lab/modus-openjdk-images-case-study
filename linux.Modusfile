@@ -85,7 +85,7 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, BASE_SETUP_COMMAND) :-
                               ${CLEANER}",
         JAVA_HOME = f"/usr/java/openjdk-${MAJOR_VERSION}"
     ;
-        !(is_alpine(VARIANT, ALPINE_VERSION), is_oracle(VARIANT, ORACLE_VERSION)),
+        !(is_alpine(VARIANT, _), is_oracle(VARIANT, _)),
         debian_image(VARIANT, JAVA_TYPE),
         debian_packages(PACKAGES, VARIANT, MAJOR_VERSION),
         BASE_SETUP_COMMAND = f"set -eux; \
