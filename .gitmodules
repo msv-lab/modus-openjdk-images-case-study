@@ -1,3 +1,0 @@
-[submodule "openjdk"]
-	path = openjdk
-	url = https://github.com/docker-library/openjdk.git
