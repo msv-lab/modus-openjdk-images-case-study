@@ -1,0 +1,190 @@
+{
+  "11": {
+    "jdk": {
+      "arches": {
+        "amd64": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jdk_x64_linux_11.0.14.1_1.tar.gz"
+        },
+        "arm64v8": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jdk_aarch64_linux_11.0.14.1_1.tar.gz"
+        },
+        "windows-amd64": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jdk_x64_windows_11.0.14.1_1.zip"
+        }
+      }
+    },
+    "jre": {
+      "arches": {
+        "amd64": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jre_x64_linux_11.0.14.1_1.tar.gz"
+        },
+        "arm64v8": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jre_aarch64_linux_11.0.14.1_1.tar.gz"
+        },
+        "windows-amd64": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jre_x64_windows_11.0.14.1_1.zip"
+        }
+      }
+    },
+    "source": "adopt",
+    "variants": [
+      "oraclelinux8",
+      "oraclelinux7",
+      "bullseye",
+      "slim-bullseye",
+      "buster",
+      "slim-buster",
+      "windows/windowsservercore-ltsc2022",
+      "windows/windowsservercore-1809",
+      "windows/nanoserver-1809"
+    ],
+    "version": "11.0.14.1"
+  },
+  "17": {
+    "jdk": {
+      "arches": {
+        "amd64": {
+          "sha256": "0022753d0cceecacdd3a795dd4cea2bd7ffdf9dc06e22ffd1be98411742fbb44",
+          "url": "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz"
+        },
+        "arm64v8": {
+          "sha256": "13bfd976acf8803f862e82c7113fb0e9311ca5458b1decaef8a09ffd91119fa4",
+          "url": "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-aarch64_bin.tar.gz"
+        },
+        "windows-amd64": {
+          "sha256": "b2208206bda47f2e0c971a39e057a5ec32c40b503d71e486790cb728d926b615",
+          "url": "https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_windows-x64_bin.zip"
+        }
+      }
+    },
+    "source": "oracle",
+    "variants": [
+      "oraclelinux8",
+      "oraclelinux7",
+      "bullseye",
+      "slim-bullseye",
+      "buster",
+      "slim-buster",
+      "windows/windowsservercore-ltsc2022",
+      "windows/windowsservercore-1809",
+      "windows/nanoserver-1809"
+    ],
+    "version": "17.0.2"
+  },
+  "18": {
+    "jdk": {
+      "arches": {
+        "amd64": {
+          "sha256": "0f60aef7b8504983d6e374fe94d09a7bedcf05ec559e812d801a33bd4ebd23d0",
+          "url": "https://download.java.net/java/GA/jdk18/43f95e8614114aeaa8e8a5fcf20a682d/36/GPL/openjdk-18_linux-x64_bin.tar.gz"
+        },
+        "arm64v8": {
+          "sha256": "dff2860ba24c3f70f32ad3ac9b03f768dd28044bbda87c9607654fd03795c2ab",
+          "url": "https://download.java.net/java/GA/jdk18/43f95e8614114aeaa8e8a5fcf20a682d/36/GPL/openjdk-18_linux-aarch64_bin.tar.gz"
+        },
+        "windows-amd64": {
+          "sha256": "a5b91d4c12752d44aa75df70ae3e2311287b3e60c288b07dade106376c688277",
+          "url": "https://download.java.net/java/GA/jdk18/43f95e8614114aeaa8e8a5fcf20a682d/36/GPL/openjdk-18_windows-x64_bin.zip"
+        }
+      }
+    },
+    "source": "oracle",
+    "variants": [
+      "oraclelinux8",
+      "oraclelinux7",
+      "bullseye",
+      "slim-bullseye",
+      "buster",
+      "slim-buster",
+      "windows/windowsservercore-ltsc2022",
+      "windows/windowsservercore-1809",
+      "windows/nanoserver-1809"
+    ],
+    "version": "18"
+  },
+  "19": {
+    "alpine": {
+      "jdk": {
+        "arches": {
+          "amd64": {
+            "sha256": "0ee67a41fe97341f131bd4f065ed6092d55c15de5f00f8ba1e57d21eefb2c787",
+            "url": "https://download.java.net/java/early_access/alpine/5/binaries/openjdk-19-ea+5_linux-x64-musl_bin.tar.gz"
+          }
+        }
+      },
+      "version": "19-ea+5"
+    },
+    "jdk": {
+      "arches": {
+        "amd64": {
+          "sha256": "df0cd18dd2885e213244d96e894df4b7f4570eec80a3110f3e50663ba3019c36",
+          "url": "https://download.java.net/java/early_access/jdk19/9/GPL/openjdk-19-ea+9_linux-x64_bin.tar.gz"
+        },
+        "arm64v8": {
+          "sha256": "a77a19b7ec6cd8b57ed1d35d893b166b3d2d5e60036d559fd71f37733bf08031",
+          "url": "https://download.java.net/java/early_access/jdk19/9/GPL/openjdk-19-ea+9_linux-aarch64_bin.tar.gz"
+        },
+        "windows-amd64": {
+          "sha256": "3c3c31928fc0e9569acd06ab407254c24031a9ec77064d61011ea4ccc9d9e7e8",
+          "url": "https://download.java.net/java/early_access/jdk19/9/GPL/openjdk-19-ea+9_windows-x64_bin.zip"
+        }
+      }
+    },
+    "source": "oracle",
+    "variants": [
+      "oraclelinux8",
+      "oraclelinux7",
+      "bullseye",
+      "slim-bullseye",
+      "buster",
+      "slim-buster",
+      "alpine3.15",
+      "alpine3.14",
+      "windows/windowsservercore-ltsc2022",
+      "windows/windowsservercore-1809",
+      "windows/nanoserver-1809"
+    ],
+    "version": "19-ea+9"
+  },
+  "8": {
+    "jdk": {
+      "arches": {
+        "amd64": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u322-b06/OpenJDK8U-jdk_x64_linux_8u322b06.tar.gz"
+        },
+        "arm64v8": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u322-b06/OpenJDK8U-jdk_aarch64_linux_8u322b06.tar.gz"
+        },
+        "windows-amd64": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u322-b06/OpenJDK8U-jdk_x64_windows_8u322b06.zip"
+        }
+      }
+    },
+    "jre": {
+      "arches": {
+        "amd64": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u322-b06/OpenJDK8U-jre_x64_linux_8u322b06.tar.gz"
+        },
+        "arm64v8": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u322-b06/OpenJDK8U-jre_aarch64_linux_8u322b06.tar.gz"
+        },
+        "windows-amd64": {
+          "url": "https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u322-b06/OpenJDK8U-jre_x64_windows_8u322b06.zip"
+        }
+      }
+    },
+    "source": "adopt",
+    "variants": [
+      "oraclelinux8",
+      "oraclelinux7",
+      "bullseye",
+      "slim-bullseye",
+      "buster",
+      "slim-buster",
+      "windows/windowsservercore-ltsc2022",
+      "windows/windowsservercore-1809",
+      "windows/nanoserver-1809"
+    ],
+    "version": "8u322"
+  }
+}
