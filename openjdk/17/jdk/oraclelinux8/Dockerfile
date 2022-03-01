@@ -33,30 +33,30 @@ ENV LANG C.UTF-8
 ENV JAVA_VERSION 17.0.2
 
 
-ADD ./binaries/17-jdk-false $JAVA_HOME
+COPY ./binaries/17-jdk-false $JAVA_HOME
 
-# RUN set -eux; \
-# 	rm -rf "$JAVA_HOME/lib/security/cacerts"; \
-# # see "update-ca-trust" script which creates/maintains this cacerts bundle
-# 	ln -sT /etc/pki/ca-trust/extracted/java/cacerts "$JAVA_HOME/lib/security/cacerts"; \
-# 	\
-# # https://github.com/oracle/docker-images/blob/a56e0d1ed968ff669d2e2ba8a1483d0f3acc80c0/OracleJava/java-8/Dockerfile#L17-L19
-# 	ln -sfT "$JAVA_HOME" /usr/java/default; \
-# 	ln -sfT "$JAVA_HOME" /usr/java/latest; \
-# 	for bin in "$JAVA_HOME/bin/"*; do \
-# 		base="$(basename "$bin")"; \
-# 		[ ! -e "/usr/bin/$base" ]; \
-# 		alternatives --install "/usr/bin/$base" "$base" "$bin" 20000; \
-# 	done; \
-# 	\
-# # https://github.com/docker-library/openjdk/issues/212#issuecomment-420979840
-# # https://openjdk.java.net/jeps/341
-# 	java -Xshare:dump; \
-# 	\
-# # basic smoke test
-# 	fileEncoding="$(echo 'System.out.println(System.getProperty("file.encoding"))' | jshell -s -)"; [ "$fileEncoding" = 'UTF-8' ]; rm -rf ~/.java; \
-# 	javac --version; \
-# 	java --version
+RUN set -eux; \
+	rm -rf "$JAVA_HOME/lib/security/cacerts"; \
+# see "update-ca-trust" script which creates/maintains this cacerts bundle
+	ln -sT /etc/pki/ca-trust/extracted/java/cacerts "$JAVA_HOME/lib/security/cacerts"; \
+	\
+# https://github.com/oracle/docker-images/blob/a56e0d1ed968ff669d2e2ba8a1483d0f3acc80c0/OracleJava/java-8/Dockerfile#L17-L19
+	ln -sfT "$JAVA_HOME" /usr/java/default; \
+	ln -sfT "$JAVA_HOME" /usr/java/latest; \
+	for bin in "$JAVA_HOME/bin/"*; do \
+		base="$(basename "$bin")"; \
+		[ ! -e "/usr/bin/$base" ]; \
+		alternatives --install "/usr/bin/$base" "$base" "$bin" 20000; \
+	done; \
+	\
+# https://github.com/docker-library/openjdk/issues/212#issuecomment-420979840
+# https://openjdk.java.net/jeps/341
+	java -Xshare:dump; \
+	\
+# basic smoke test
+	fileEncoding="$(echo 'System.out.println(System.getProperty("file.encoding"))' | jshell -s -)"; [ "$fileEncoding" = 'UTF-8' ]; rm -rf ~/.java; \
+	javac --version; \
+	java --version
 
-# # "jshell" is an interactive REPL for Java (see https://en.wikipedia.org/wiki/JShell)
-# CMD ["jshell"]
+# "jshell" is an interactive REPL for Java (see https://en.wikipedia.org/wiki/JShell)
+CMD ["jshell"]
