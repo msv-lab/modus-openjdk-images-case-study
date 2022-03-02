@@ -86,7 +86,10 @@ def main():
 
     with open('facts.Modusfile', 'w') as out:
         for row in rows:
-            out.write(f"{to_fact(row)}\n")
+            if row[2] == "jre" and row[3].startswith("oraclelinux"):
+                out.write(f"# {to_fact(row)}\n")
+            else:
+                out.write(f"{to_fact(row)}\n")
 
 if __name__ == "__main__":
     main()
