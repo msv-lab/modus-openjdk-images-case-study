@@ -3,5 +3,5 @@ set -Eeuo pipefail
 
 cd "$(dirname "$(readlink -f "$BASH_SOURCE")")"
 
-./versions.sh "$@"
+./versions.py
 ./apply-templates.sh "$@"

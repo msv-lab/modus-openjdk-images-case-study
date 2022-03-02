@@ -12,7 +12,12 @@ def generate_tabular():
 
     url = "https://raw.githubusercontent.com/docker-library/openjdk/master/versions.json"
     with urllib.request.urlopen(url) as url_opened:
-        data = json.loads(url_opened.read().decode())
+        decoded = url_opened.read().decode()
+
+        with open("versions.json", "w") as w:
+            w.write(decoded)
+
+        data = json.loads(decoded)
 
         # e.g. .major_version.java_type.arches.arch.url
         for major_version in data:
