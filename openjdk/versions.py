@@ -85,8 +85,6 @@ def main():
     for row in rows:
         if row[3].startswith("windows"):
             continue
-        if row[2] == "jre" and row[3].startswith("oraclelinux"):
-            continue
 
         tup = (row[4], row[5])
         if tup in seen_urls:
