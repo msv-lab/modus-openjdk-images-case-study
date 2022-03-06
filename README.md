@@ -6,7 +6,21 @@ The [Docker Official Images](https://github.com/docker-library/official-images) 
 
 ## Code Size
 
-A [single 241 line Modusfile](./linux.Modusfile) holds the conditional logic that defines all the varying image builds. In contrast, the templating approach requires a [332 line template file](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), a [77 line script](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh) to apply the template, and a [140 line file](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk) that defines some helper functions using awk and jq, totalling 549 LoC.
+A [single 241 line Modusfile](./linux.Modusfile) holds the conditional logic that defines all the varying image builds. In contrast, the templating approach requires a [332 line template file](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), a [77 line script](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh) to apply the template, and a [140 line file](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk) that defines some helper functions using awk and jq.
+
+Below are statistics for (variations of) the `linux.Modusfile` according to `wc`:
+|      Variation                               | Newlines | Words | Bytes |
+|----------------------------------------------|----------|-------|-------|
+| Unedited                                     | 241      | 788   | 9293  |
+| Comments/empty lines removed                 | 219      | 647   | 8384  |
+| Comments/empty lines & select tokens removed | 219      | 602   | 8339  |
+
+Below are the combined statistics for (variations of) the files needed for templating, as mentioned above:
+|      Variation                               | Newlines | Words | Bytes |
+|----------------------------------------------|----------|-------|-------|
+| Unedited                                     | 549      | 2213  | 16140 |
+| Comments/empty lines removed                 | 441      | 1560  | 10657 |
+| Comments/empty lines & select tokens removed | 441      | 1330  | 10187 |
 
 ## Build Time - 6 core machine & WSL2
 
