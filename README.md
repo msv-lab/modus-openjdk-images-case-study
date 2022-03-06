@@ -26,7 +26,8 @@ Modus performs better than the other approaches due to the parallel builds perfo
 The official Dockerfiles do not take advantage of either multi-stage builds or the caching which would be easier to implement[^cache] with multi-stage builds.
 Since these are the primary ways Modus improves on performance, we decided to extend the existing OpenJDK approach to implement these optimizations _without Modus_.
 
-TODO: more.
+These hand written optimizations actually did not perform better **on average** than the naive parallel builds. This may be due to the overhead of copying gigabytes of data which is how we attempted to manually optimize the build. In addition, it is quite possible that for a number of parallel builds, the order of the builds simply happened to be the one that avoided duplicate fetching of binaries (since GNU's `parallel` does not run *all* the builds at once, by default).
+This does show that an even more complicated approach would be required for consistently better performance, motivating the use of a system like Modus.
 
 [^cache]: Simply adding multi-stage builds does not give 'free' caching if one builds images in parallel.
 
