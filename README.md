@@ -38,10 +38,10 @@ Here are the full results averaged over 10 runs for each approach. The final col
 
 | Approach | Time | Time + Template Processing |
 |--|--|--|
-| Official Dockerfiles sequentially | 691.7s | 812.8s |
-| Official Dockerfiles in parallel | 283.6 | 404.7 |
-| Official Dockerfiles w/ our hand-written optimizations | 286.7 | 407.8 |
-| Modus | 276.4 | 276.4 |
+| Official Dockerfiles sequentially | 686.0s | 807.1s |
+| Official Dockerfiles in parallel | 284.6 | 405.7 |
+| Official Dockerfiles w/ our hand-written optimizations | 288.4 | 409.5 |
+| Modus | 280.5 | 280.5 |
 
 ## Image Efficiency
 
