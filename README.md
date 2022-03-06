@@ -22,69 +22,41 @@ Below are the combined statistics for (variations of) the files needed for templ
 | Comments/empty lines removed                 | 441      | 1560  | 10657 |
 | Comments/empty lines & select tokens removed | 441      | 1330  | 10187 |
 
-## Build Time - 6 core machine & WSL2
+## Build Time - AWS EC2 (t2.xlarge)
 
-We compared performance of the official Dockerfiles and our Modusfile. To provide a baseline for our performance tests, we first built the official Dockerfiles sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`:
+Full details on the t2.xlarge hardware are [here](https://aws.amazon.com/ec2/instance-types/t2/).
 
-![image](https://user-images.githubusercontent.com/46009390/152654516-7e6583ca-c52e-42f0-bad9-c89db768b2be.png)
+- We compared performance of the official Dockerfiles and our Modusfile. To provide a baseline for our performance tests, we built the official Dockerfiles sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
+- We built the Dockerfiles in parallel using GNU's `parallel` (to replicate Modus' approach of parallel builds) `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`.
+- We executed Modus using the command `time modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. This builds the same 40 images[^image-count] that were built through the official approach.
+All builds were executed with empty Docker build cache.
 
-We also built the Dockerfiles in parallel using GNU's `parallel` (to replicate Modus' approach of parallel builds) `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`:
+Modus performs better than the other approaches due to the parallel builds performed by our front-end to BuildKit, in addition to an image caching optimization.
 
-![image](https://user-images.githubusercontent.com/46009390/153932239-203272f5-2347-40c2-80c3-2c9d9cb8b67f.png)
-
-We then executed Modus using the command `time modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. 
-
-![image](https://user-images.githubusercontent.com/46009390/153933632-b013dd69-04e1-4cd4-b668-7ffedb543d74.png)
-
-These experiments were executed on a [Intel(R) Core(TM) i5-10400F CPU @ 2.90GHz](https://www.intel.co.uk/content/www/uk/en/products/sku/199278/intel-core-i510400f-processor-12m-cache-up-to-4-30-ghz/specifications.html) with 6 total cores, and with 8GiB of RAM.
-The commands were executed under WSL2. All builds were executed with empty Docker build cache.
-
-The baseline, building images _sequentially_ from the official Dockerfiles, took __16:46__ minutes to build 42 images. Building those same 42 images with `parallel` took **5:14** minutes.
-Our approach, using Modus, took **4:54** minutes to build the same 42 images. The performance improvements from using Modus is due to the parallel build performed by our front-end to BuildKit, in addition to an image caching optimization.
+[^image-count]: The number of images and the binaries themselves vary, so this is the number of images available at the time we conducted the benchmarks.
 
 ### OpenJDK optimizations without Modus
 
 The official Dockerfiles do not take advantage of either multi-stage builds or the caching which would be easier to implement[^cache] with multi-stage builds.
 Since these are the primary ways Modus improves on performance, we decided to extend the existing OpenJDK approach to implement these optimizations _without Modus_.
 
-![image](https://user-images.githubusercontent.com/46009390/154812068-780ec660-4613-4d32-916f-c4ee3a3a9ba1.png)
-
-The total build script which includes these optimizations took 4m56.
+These hand written optimizations actually did not perform better **on average** than the naive parallel builds. This may be due to the overhead of copying gigabytes of data which is how we attempted to manually optimize the build. In addition, it is quite possible that for a number of parallel builds, the order of the builds simply happened to be the one that avoided duplicate fetching of binaries (since GNU's `parallel` does not run *all* the builds at once, by default).
+This does show that an even more complicated approach would be required for consistently better performance, motivating the use of a system like Modus.
 
 [^cache]: Simply adding multi-stage builds does not give 'free' caching if one builds images in parallel.
 
 ### Summary
 
-| Approach | Time |
-|--|--|
-| Official Dockerfiles sequentially | 16m46 |
-| Official Dockerfiles in parallel | 5m14 |
-| Official Dockerfiles w/ our hand-written optimizations | 4m56 |
-| Modus | 4m54 |
+Applying the templates to generate the official OpenJDK Dockerfiles took **121.1s**, averaged over 10 runs.
 
-## Build Time - AWS EC2 (t2.xlarge)
+Here are the full results averaged over 10 runs for each approach. The final column simply adds 121.1s where appropriate.
 
-Full details on the t2.xlarge hardware are [here](https://aws.amazon.com/ec2/instance-types/t2/).
-To account for hardware differences on the t2.xlarge instance, we reran the baseline.
-
-Official Dockerfiles executed in parallel with `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`:
-
-![image](https://user-images.githubusercontent.com/46009390/153929561-ec0f272c-2ea1-404c-a3df-4c0be80091e6.png)
-
-Modusfiles built with `time modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)`:
-
-![image](https://user-images.githubusercontent.com/46009390/153930533-1e7ddee7-a1d3-44c8-bbce-89488cf0458f.png)
-
-The parallel baseline approach took **5m14**, whereas our approach using Modus took **4m55**.
-
-
-## Building Subset of Images
-
-An example of a typical use case, such as building all versions of JDK on a particular base image (slim-bullseye):
-
-![image](https://user-images.githubusercontent.com/46009390/153935512-c2122052-bae8-44e8-b7ae-2d7a7f3fa226.png)
-
-We're able to build 5 versions in **1:16** minutes.
+| Approach | Time | Time + Template Processing |
+|--|--|--|
+| Official Dockerfiles sequentially | 686.0s | 807.1s |
+| Official Dockerfiles in parallel | 284.6 | 405.7 |
+| Official Dockerfiles w/ our hand-written optimizations | 288.4 | 409.5 |
+| Modus | 280.5 | 280.5 |
 
 ## Image Efficiency
 
