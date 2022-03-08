@@ -96,8 +96,26 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, BASE_SETUP_COMMAND) :-
         backwards_compatibility(MAJOR_VERSION, JAVA_HOME)
     ).
 
-gpg_check(VARIANT) :-
-    "0" = "0". # TODO
+gpg_check(GETTER, SOURCE) :-
+    (
+        SOURCE = "adopt",
+        run(f"${GETTER} openjdk.tgz.asc \"`cat /tmp/downloadUrl`.sign\""),
+        run("set -eux; \
+             export GNUPGHOME=\"$(mktemp -d)\"; \
+             echo \"$GNUPGHOME\" > /tmp/GNUPGHOME; \
+             gpg --batch --keyserver keyserver.ubuntu.com --recv-keys EAC843EBD3EFDB98CC772FADA5CD6035332FA671; \
+             gpg --batch --keyserver keyserver.ubuntu.com --keyserver-options no-self-sigs-only --recv-keys CA5F11C6CE22644D42C6AC4492EF8D39DC13168F; \
+             gpg --batch --list-sigs --keyid-format 0xLONG CA5F11C6CE22644D42C6AC4492EF8D39DC13168F \
+                 | tee /dev/stderr \
+                 | grep '0xA5CD6035332FA671' \
+                 | grep 'Andrew Haley'; \
+             gpg --batch --verify openjdk.tgz.asc openjdk.tgz;"),
+        run("gpgconf --kill all;"),
+        run("rm -rf \"`cat /tmp/GNUPGHOME`\"")
+    ;
+        SOURCE != "adopt",
+        run("")
+    ).
 
 extract_bin(JAVA_HOME) :-
     run(f"mkdir -p ${JAVA_HOME}; \
@@ -109,7 +127,7 @@ extract_bin(JAVA_HOME) :-
           ; \
           rm openjdk.tgz*;").
 
-install_bin(AMD64_URL, ARM64_URL, JAVA_HOME) :-
+install_bin(AMD64_URL, ARM64_URL, JAVA_HOME, SOURCE) :-
     ARCH_PRINTER = "apk --print-arch",
     AMD64_MATCH = "x86_64",
     ARM64_MATCH = "aarch64",
@@ -119,6 +137,7 @@ install_bin(AMD64_URL, ARM64_URL, JAVA_HOME) :-
     # on alpine, since we will just copy the extracted files into the correct base image later.
     # So this is fine as long as we don't try to execute it here.
     from("alpine:latest"),
+    run("apk add gnupg"),
     run(f"set -eux; \
           arch=\"\$(${ARCH_PRINTER})\"; \
           case \"\$arch\" in \
@@ -130,8 +149,11 @@ install_bin(AMD64_URL, ARM64_URL, JAVA_HOME) :-
                   ;; \
               *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
           esac; \
+          echo \"$downloadUrl\" > /tmp/downloadUrl; \
           ${GETTER} openjdk.tgz \"\$downloadUrl\";"),
-    extract_bin(JAVA_HOME).
+    gpg_check(GETTER, SOURCE),
+    extract_bin(JAVA_HOME),
+    run("rm -rf /tmp/downloadUrl").
 
 ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
     (
@@ -206,7 +228,7 @@ entry_sh(MAJOR_VERSION, JAVA_TYPE) :-
     ),
     run(f"echo '#!/bin/bash' > entry.sh; echo '${COMMAND}' >> entry.sh; chmod +x entry.sh").
 
-openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) :-
+openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, SOURCE) :-
     openjdk_config(MAJOR_VERSION, VERSION,
                    JAVA_TYPE,
                    VARIANT,
@@ -220,7 +242,7 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) 
     (
         run(BASE_SETUP_COMMAND),
         locale(VARIANT, LANG),
-        install_bin(AMD64_URL, ARM64_URL, JAVA_HOME)::copy(JAVA_HOME, JAVA_HOME),
+        install_bin(AMD64_URL, ARM64_URL, JAVA_HOME, SOURCE)::copy(JAVA_HOME, JAVA_HOME),
         ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
         smoke_tests(MAJOR_VERSION, JAVA_TYPE)
     )::merge,
@@ -230,10 +252,10 @@ openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
     (
         VARIANT = f"windows/${WINDOWS_IMAGE}",
         "0" = "1", # NOTE: no windows support atm. So this will intentionally always fail.
-        openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)
+        openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, SOURCE)
             ::set_entrypoint("./entry.sh")
     ;
-        openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)
+        openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, SOURCE)
             ::set_entrypoint("./entry.sh")
     ).
 
