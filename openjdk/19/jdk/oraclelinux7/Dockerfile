@@ -30,7 +30,7 @@ ENV LANG en_US.UTF-8
 # >
 # > Java Development Kit builds, from Oracle
 # >
-ENV JAVA_VERSION 19-ea+11
+ENV JAVA_VERSION 19-ea+12
 
 
 COPY ./binaries/19-jdk-false $JAVA_HOME
