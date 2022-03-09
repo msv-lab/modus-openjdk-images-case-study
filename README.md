@@ -63,9 +63,10 @@ Here are the full results averaged over 10 runs for each approach. The final col
 We used [dive](https://github.com/wagoodman/dive) which provides an estimate of image efficiency. 
 An example of an 'inefficiency' would be moving files across layers - this is a change that needs to be recorded as part of the layer, yet could be avoided by rewriting the Dockerfile.
 
-All the images we built scored over 95% image efficiency:
-
-![image](https://user-images.githubusercontent.com/46009390/152662059-67ecc65e-6b41-4dc8-b18a-082e98597bd5.png)
+| Approach | Average Efficiency |
+|--|--|
+| Built with our Modusfiles | 98.9 |
+| Official OpenJDK Images | 98.8 |
 
 The official OpenJDK images also score highly on image efficiency (all above 95%), but at a cost to readability and separability.
 Nearly [half of their Dockerfile](https://github.com/docker-library/openjdk/blob/ffcc4b9190be32ed7c4c92f6aa8fe2463da291d6/Dockerfile-linux.template#L187-L332) is a single `RUN` layer, to avoid the issue of modifications recorded in the layer diffs bloating the image size.
