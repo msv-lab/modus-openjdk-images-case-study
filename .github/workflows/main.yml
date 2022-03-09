@@ -36,8 +36,9 @@ jobs:
         run: jq '.[] | [.digest, (.args | join("-"))] | join(" ")' build.json | xargs -I % sh -c 'docker tag %'
 
       - name: Install container-diff
-        run: curl -LO https://storage.googleapis.com/container-diff/latest/container-diff-linux-amd64 && \
-             sudo install container-diff-linux-amd64 /usr/local/bin/container-diff
+        run: |
+          curl -LO https://storage.googleapis.com/container-diff/latest/container-diff-linux-amd64
+          sudo install container-diff-linux-amd64 /usr/local/bin/container-diff
 
       - name: Compare image sizes/filesystem
         run: jq '.[].args | join("-")' build.json | xargs -I % sh -c 'container-diff diff openjdk:% daemon://% --type=size --type=file'
