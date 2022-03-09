@@ -68,7 +68,7 @@ jobs:
           sudo install container-diff-linux-amd64 /usr/local/bin/container-diff
 
       - name: Compare image sizes/filesystem
-        run: jq '.[].args | join("-")' build.json | xargs -I % sh -c 'container-diff diff openjdk:% daemon://% --type=size --type=file'
+        run: jq '.[].args | join("-")' build.json | xargs -I % sh -c 'container-diff diff openjdk:% daemon://% | sed -n 6p | awk \'{print $2 - $1;}\''
 
       - name: View docker images
         run: docker images
