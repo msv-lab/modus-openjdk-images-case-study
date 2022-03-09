@@ -30,7 +30,10 @@ jobs:
         run: cargo install modus
         
       - name: Build Linux images
-        run: ~/.cargo/bin/modus build $GITHUB_WORKSPACE/openjdk -f <(cat $GITHUB_WORKSPACE/openjdk/*.Modusfile) 'openjdk(A, B, C)'
+        run: ~/.cargo/bin/modus build $GITHUB_WORKSPACE/openjdk -f <(cat $GITHUB_WORKSPACE/openjdk/*.Modusfile) 'openjdk(A, B, C)' --json > build.json
+
+      - name: Tag images
+        run: jq '.[] | [.digest, (.args | join("-"))] | join(" ")' build.json | xargs -I % sh -c 'docker tag %'
 
       - name: View docker images
         run: docker images
