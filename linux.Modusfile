@@ -5,116 +5,93 @@ is_debian(VARIANT) :- debian_variant(VARIANT). # HACK: to determine if (non-slim
 is_debian_slim(VARIANT, DEBIAN_SUITE) :- VARIANT = f"slim-${DEBIAN_SUITE}".
 
 oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION) :-
-    (ORACLE_VERSION = "7", INSTALLER = "yum install -y", CLEANER = "rm -rf /var/cache/yum")
+    (
+        ORACLE_VERSION = "7",
+        INSTALLER = "yum install -y",
+        CLEANER = "rm -rf /var/cache/yum"
     ;
-    (number_gt(ORACLE_VERSION, "7"), INSTALLER = "microdnf install", CLEANER = "microdnf clean all").
+        number_gt(ORACLE_VERSION, "7"),
+        INSTALLER = "microdnf install",
+        CLEANER = "microdnf clean all"
+    ).
 
-debian_suffix(SUFFIX, JAVA_TYPE) :- (JAVA_TYPE = "jdk", SUFFIX = "-scm") ; (JAVA_TYPE = "jre", SUFFIX = "-curl").
+debian_suffix(SUFFIX, JAVA_TYPE) :-
+    (
+        JAVA_TYPE = "jdk", SUFFIX = "-scm"
+    ;
+        JAVA_TYPE = "jre", SUFFIX = "-curl"
+    ).
 debian_image(VARIANT, JAVA_TYPE) :-
     (
-        # FIXME: some weirdness with groundness check in disjunction
-        # Maybe I should remove unused variables from the head when translating to IR?
-        JAVA_TYPE = JAVA_TYPE,
         is_debian_slim(VARIANT, DEBIAN_SUITE),
         IMAGE_NAME = f"debian:${DEBIAN_SUITE}-slim",
         from(IMAGE_NAME)
-    )
     ;
-    (
         is_debian(VARIANT),
         debian_suffix(SUFFIX, JAVA_TYPE),
         IMAGE_NAME = f"buildpack-deps:${VARIANT}${SUFFIX}",
         from(IMAGE_NAME)
     ).
 debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
-    MAJOR_VERSION = MAJOR_VERSION, is_debian_slim(VARIANT, DEBIAN_SUITE), PACKAGES = "ca-certificates p11-kit"
+    (
+        is_debian_slim(VARIANT, DEBIAN_SUITE),
+        PACKAGES = "ca-certificates p11-kit"
     ;
-    is_debian(VARIANT), number_gt(MAJOR_VERSION, "12"), PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit"
+        is_debian(VARIANT),
+        number_geq(MAJOR_VERSION, "13"),
+        PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit"
     ;
-    is_debian(VARIANT), (MAJOR_VERSION = "12" ; number_gt("12", MAJOR_VERSION)), PACKAGES = "bzip2 unzip xz-utils fontconfig libfreetype6 ca-certificates p11-kit".
+        is_debian(VARIANT),
+        number_gt("13", MAJOR_VERSION),
+        PACKAGES = "bzip2 unzip xz-utils fontconfig libfreetype6 ca-certificates p11-kit"
+    ).
 
 backwards_compatibility(MAJOR_VERSION, JAVA_HOME) :-
     # backwards compatibility for debian versions < 16
-    number_gt("16", MAJOR_VERSION), run(f"{ echo '#/bin/sh'; echo 'echo \"${JAVA_HOME}\"'; } > /usr/local/bin/docker-java-home \
-                                          && chmod +x /usr/local/bin/docker-java-home \
-                                          && [ \"${JAVA_HOME}\" = \"\$(docker-java-home)\" ]")
+    (
+        number_gt("16", MAJOR_VERSION),
+        run(f"{ echo '#/bin/sh'; echo 'echo \"${JAVA_HOME}\"'; } > /usr/local/bin/docker-java-home \
+              && chmod +x /usr/local/bin/docker-java-home \
+              && [ \"${JAVA_HOME}\" = \"\$(docker-java-home)\" ]")
     ;
-    (MAJOR_VERSION = "16" ; number_gt(MAJOR_VERSION, "16")), JAVA_HOME = JAVA_HOME, run("").
+        number_geq(MAJOR_VERSION, "16"),
+        JAVA_HOME = JAVA_HOME,
+        run("")
+    ).
 
 locale(VARIANT, LANG) :-
     (
-        is_oracle(VARIANT, ORACLE_VERSION),
-        ORACLE_VERSION = "7",
+        is_oracle(VARIANT, "7"),
         LANG = "en_US.UTF-8"
-    )
     ;
-    (
-        # FIXME: actual else using negation
-        (is_oracle(VARIANT, ORACLE_VERSION), number_gt(ORACLE_VERSION, "7")
-         ; is_alpine(VARIANT, ALPINE_VERSION)
-         ; is_debian(VARIANT)
-         ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
+        !is_oracle(VARIANT, "7"),
         LANG = "C.UTF-8"
     ).
 
-arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER) :-
-    (
-        # Feature idea: underscore syntax when you don't care about a binding, e.g. is_alpine(VARIANT, _)
-        is_alpine(VARIANT, ALPINE_VERSION),
-        ARCH_PRINTER = "apk --print-arch",
-        AMD64_MATCH = "x86_64",
-        ARM64_MATCH = "aarch64",
-        GETTER = "wget -O"
-    )
-    ;
-    (
-        is_oracle(VARIANT, ORACLE_VERSION),
-        ARCH_PRINTER = "objdump=\"$(command -v objdump)\" && objdump --file-headers \"$objdump\" | awk -F '[:,]+[[:space:]]+' '$1 == \"architecture\" { print $2 }'",
-        AMD64_MATCH = "i386:x86-64",
-        ARM64_MATCH = "aarch64",
-        GETTER = "curl -fL -o"
-    )
-    ;
-    (
-        # FIXME: actual else
-        (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
-        ARCH_PRINTER = "dpkg --print-architecture",
-        AMD64_MATCH = "amd64",
-        ARM64_MATCH = "arm64",
-        GETTER = "wget --progress=dot:giga -O"
-    ).
-
 # Selects base image and runs relevant initial commands to prepare it.
-base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE) :-
+base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, BASE_SETUP_COMMAND) :-
     (
-        JAVA_TYPE = JAVA_TYPE,
         is_alpine(VARIANT, ALPINE_VERSION),
         from(f"alpine:${ALPINE_VERSION}"),
         # NOTE: bash added for entrypoint script, it's NOT present in the real OpenJDK
-        run("apk add --no-cache java-cacerts --upgrade bash"),
+        BASE_SETUP_COMMAND = "apk add --no-cache java-cacerts --upgrade bash",
         JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}"
-    )
     ;
-    (
-        JAVA_TYPE = JAVA_TYPE,
         is_oracle(VARIANT, ORACLE_VERSION),
         oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION),
         from(f"oraclelinux:${ORACLE_VERSION}-slim"),
-        run(f"set -eux; \
-              ${INSTALLER} gzip tar binutils freetype fontconfig; \
-              ${CLEANER}"),
+        BASE_SETUP_COMMAND = f"set -eux; \
+                              ${INSTALLER} gzip tar binutils freetype fontconfig; \
+                              ${CLEANER}",
         JAVA_HOME = f"/usr/java/openjdk-${MAJOR_VERSION}"
-    )
     ;
-    (
-        # FIXME: else debian, although there are more steps so it would act as an else.
-        (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
+        !(is_alpine(VARIANT, _) ; is_oracle(VARIANT, _)),
         debian_image(VARIANT, JAVA_TYPE),
         debian_packages(PACKAGES, VARIANT, MAJOR_VERSION),
-        run(f"set -eux; \
-              apt-get update; \
-              apt-get install -y --no-install-recommends ${PACKAGES}; \
-              rm -rf /var/lib/apt/lists/*"),
+        BASE_SETUP_COMMAND = f"set -eux; \
+                              apt-get update; \
+                              apt-get install -y --no-install-recommends ${PACKAGES}; \
+                              rm -rf /var/lib/apt/lists/*",
         JAVA_HOME = f"/usr/local/openjdk-${MAJOR_VERSION}",
         backwards_compatibility(MAJOR_VERSION, JAVA_HOME)
     ).
@@ -132,205 +109,133 @@ extract_bin(JAVA_HOME) :-
           ; \
           rm openjdk.tgz*;").
 
-handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME) :-
-    arch_commands(VARIANT, ARCH_PRINTER, AMD64_MATCH, ARM64_MATCH, GETTER),
-    (
-        (
-            # TODO: choose package based on source
-            is_debian_slim(VARIANT, DEBIAN_SUITE),
-            PREFETCH_COMMAND = "savedAptMark=\"$(apt-mark showmanual)\"; \
-                                apt-get update; \
-                                apt-get install -y --no-install-recommends \
-                                    dirmngr gnupg wget; \
-                                rm -rf /var/lib/apt/lists/*;",
-            POSTFETCH_COMMAND = "apt-mark auto '.*' > /dev/null; \
-                                 [ -z \"$savedAptMark\" ] || apt-mark manual $savedAptMark > /dev/null; \
-                                 apt-get purge -y --auto-remove -o APT::AutoRemove::RecommendsImportant=false;"
+install_bin(AMD64_URL, ARM64_URL, JAVA_HOME) :-
+    ARCH_PRINTER = "apk --print-arch",
+    AMD64_MATCH = "x86_64",
+    ARM64_MATCH = "aarch64",
+    GETTER = "wget -O",
 
-            ;
-
-            # FIXME: proper else
-            (is_alpine(VARIANT, ALPINE_VERSION) ; is_oracle(VARIANT, ORACLE_VERSION) ; is_debian(VARIANT)),
-            # no-ops
-            PREFETCH_COMMAND = ":;",
-            POSTFETCH_COMMAND = ":;"
-        ),
-        run(f"set -eux; \
-              ${PREFETCH_COMMAND} \
-              arch=\"\$(${ARCH_PRINTER})\"; \
-              case \"\$arch\" in \
-                  '${AMD64_MATCH}') \
-                      downloadUrl='${AMD64_URL}'; \
-                      ;; \
-                  '${ARM64_MATCH}') \
-                      downloadUrl='${ARM64_URL}'; \
-                      ;; \
-                  *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
-              esac; \
-              ${GETTER} openjdk.tgz \"\$downloadUrl\"; \
-              ${POSTFETCH_COMMAND}"),
-        # TODO: SHA256 checksum
-        gpg_check(VARIANT), # NOTE: the postfetch command should actually go after this, but we need the env vars
-        extract_bin(JAVA_HOME)
-        # TODO: debian slim apt mark purging
-    ).
+    # It shouldn't really matter that the binary we're downloading/extracting here may not work
+    # on alpine, since we will just copy the extracted files into the correct base image later.
+    # So this is fine as long as we don't try to execute it here.
+    from("alpine:latest"),
+    run(f"set -eux; \
+          arch=\"\$(${ARCH_PRINTER})\"; \
+          case \"\$arch\" in \
+              '${AMD64_MATCH}') \
+                  downloadUrl='${AMD64_URL}'; \
+                  ;; \
+              '${ARM64_MATCH}') \
+                  downloadUrl='${ARM64_URL}'; \
+                  ;; \
+              *) echo >&2 \"error: unsupported architecture: '\$arch'\"; exit 1 ;; \
+          esac; \
+          ${GETTER} openjdk.tgz \"\$downloadUrl\";"),
+    extract_bin(JAVA_HOME).
 
 ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
-    MAJOR_VERSION = MAJOR_VERSION, # More groundness inconvenience here.
-    JAVA_TYPE = JAVA_TYPE,
     (
-        MAJOR_VERSION = "8", JAVA_TYPE = "jdk", CACERTS_FILE = f"${JAVA_HOME}/jre/lib/security/cacerts"
-        ;
-        (number_gt(MAJOR_VERSION, "8") ; JAVA_TYPE = "jre"), CACERTS_FILE = f"${JAVA_HOME}/lib/security/cacerts"
+        MAJOR_VERSION = "8", JAVA_TYPE = "jdk",
+        CACERTS_FILE = f"${JAVA_HOME}/jre/lib/security/cacerts"
+    ;
+        (number_gt(MAJOR_VERSION, "8") ; JAVA_TYPE = "jre"),
+        CACERTS_FILE = f"${JAVA_HOME}/lib/security/cacerts"
     ),
     (
-        is_alpine(VARIANT, ALPINE_VERSION), run(f"rm -rf \"${CACERTS_FILE}\"; \
-                                                  ln -sT /etc/ssl/certs/java/cacerts \"${CACERTS_FILE}\";")
-        ;
-        is_oracle(VARIANT, ORACLE_VERSION), run(f"rm -rf \"${CACERTS_FILE}\"; \
-                                                  ln -sT /etc/pki/ca-trust/extracted/java/cacerts \"${CACERTS_FILE}\"; \
-                                                  \
-                                                  ln -sfT \"${JAVA_HOME}\" /usr/java/default; \
-                                                  ln -sfT \"${JAVA_HOME}\" /usr/java/latest; \
-                                                  for bin in \"${JAVA_HOME}/bin/\"*; do \
-                                                      base=\"\$(basename \"\$bin\")\"; \
-                                                      [ ! -e \"/usr/bin/\$base\" ]; \
-                                                      alternatives --install \"/usr/bin/\$base\" \"\$base\" \"\$bin\" 20000; \
-                                                  done;")
-        ;
-        (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)), run(f"{ \
-                                                                                echo '#!/usr/bin/env bash'; \
-                                                                                echo 'set -Eeuo pipefail'; \
-                                                                                echo 'trust extract --overwrite --format=java-cacerts --filter=ca-anchors --purpose=server-auth \"${CACERTS_FILE}\"'; \
-                                                                            } > /etc/ca-certificates/update.d/docker-openjdk; \
-                                                                            chmod +x /etc/ca-certificates/update.d/docker-openjdk; \
-                                                                            /etc/ca-certificates/update.d/docker-openjdk; \
-                                                                            \
-                                                                            find \"${JAVA_HOME}/lib\" -name '*.so' -exec dirname '{}' ';' | sort -u > /etc/ld.so.conf.d/docker-openjdk.conf; \
-                                                                            ldconfig;")
+        is_alpine(VARIANT, ALPINE_VERSION),
+        run(f"rm -rf \"${CACERTS_FILE}\"; \
+              ln -sT /etc/ssl/certs/java/cacerts \"${CACERTS_FILE}\";")
+    ;
+        is_oracle(VARIANT, ORACLE_VERSION),
+        run(f"rm -rf \"${CACERTS_FILE}\"; \
+              ln -sT /etc/pki/ca-trust/extracted/java/cacerts \"${CACERTS_FILE}\"; \
+              \
+              ln -sfT \"${JAVA_HOME}\" /usr/java/default; \
+              ln -sfT \"${JAVA_HOME}\" /usr/java/latest; \
+              for bin in \"${JAVA_HOME}/bin/\"*; do \
+              base=\"\$(basename \"\$bin\")\"; \
+              [ ! -e \"/usr/bin/\$base\" ]; \
+              alternatives --install \"/usr/bin/\$base\" \"\$base\" \"\$bin\" 20000; \
+              done;")
+    ;
+        (is_debian(VARIANT) ; is_debian_slim(VARIANT, DEBIAN_SUITE)),
+        run(f"{ \
+                  echo '#!/usr/bin/env bash'; \
+                  echo 'set -Eeuo pipefail'; \
+                  echo 'trust extract --overwrite --format=java-cacerts --filter=ca-anchors --purpose=server-auth \"${CACERTS_FILE}\"'; \
+              } > /etc/ca-certificates/update.d/docker-openjdk; \
+              chmod +x /etc/ca-certificates/update.d/docker-openjdk; \
+              /etc/ca-certificates/update.d/docker-openjdk; \
+              \
+              find \"${JAVA_HOME}/lib\" -name '*.so' -exec dirname '{}' ';' | sort -u > /etc/ld.so.conf.d/docker-openjdk.conf; \
+              ldconfig;")
     ).
 
-smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME) :-
-    # TODO: replace JAVA_HOME with proper env var
+smoke_tests(MAJOR_VERSION, JAVA_TYPE) :-
     (
-        MAJOR_VERSION = "8", JAVA_TYPE = "jdk", COMMAND = "javac -version; java -version"
-        ;
-        MAJOR_VERSION = "8", JAVA_TYPE = "jre", COMMAND = "java -version"
-        ;
+        MAJOR_VERSION = "8", JAVA_TYPE = "jdk",
+        COMMAND = "javac -version; java -version"
+    ;
+        MAJOR_VERSION = "8", JAVA_TYPE = "jre",
+        COMMAND = "java -version"
+    ;
         number_gt(MAJOR_VERSION, "8"),
         (
-            JAVA_TYPE = "jdk", COMMAND = "java -Xshare:dump; \
-                                          fileEncoding=\"$(echo 'System.out.println(System.getProperty(\"file.encoding\"))' | jshell -s -)\"; [ \"$fileEncoding\" = 'UTF-8' ]; rm -rf ~/.java; \
-                                          javac --version; \
-                                          java --version"
-            ;
-            JAVA_TYPE = "jre", COMMAND = "java -Xshare:dump; java --version"
+            JAVA_TYPE = "jdk",
+            COMMAND = "java -Xshare:dump; \
+                       fileEncoding=\"$(echo 'System.out.println(System.getProperty(\"file.encoding\"))' | jshell -s -)\"; [ \"$fileEncoding\" = 'UTF-8' ]; rm -rf ~/.java; \
+                       javac --version; \
+                       java --version"
+        ;
+            JAVA_TYPE = "jre",
+            COMMAND = "java -Xshare:dump; java --version"
         )
     ),
-    run(f"PATH=${JAVA_HOME}/bin:\$PATH; ${COMMAND}").
+    run(COMMAND).
 
-entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE) :-
+entry_sh(MAJOR_VERSION, JAVA_TYPE) :-
     (
-        MAJOR_VERSION = "8", JAVA_TYPE = JAVA_TYPE, COMMAND = "bash" # HACK: Probably shouldn't assume bash
-        ;
-        number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jre", COMMAND = "bash"
-        ;
-        number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jdk", COMMAND = "jshell" # jshell only launched if jdk
+        MAJOR_VERSION = "8", JAVA_TYPE = JAVA_TYPE,
+        COMMAND = "bash" # HACK: Probably shouldn't assume bash
+    ;
+        number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jre",
+        COMMAND = "bash"
+    ;
+        number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jdk",
+        COMMAND = "jshell" # jshell only launched if jdk
     ),
-    run(f"echo '#!/bin/bash' > entry.sh; \
-          echo 'export JAVA_HOME='${JAVA_HOME}' && export LANG='${LANG}' && export JAVA_VERSION='${VERSION}' && export PATH=${JAVA_HOME}/bin:\$PATH; ${COMMAND}' >> entry.sh; \
-          chmod +x entry.sh").
+    run(f"echo '#!/bin/bash' > entry.sh; echo '${COMMAND}' >> entry.sh; chmod +x entry.sh").
 
 openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL) :-
-    openjdk_config(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, SOURCE),
-
-    base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE),
-    # TODO append_path(f"${JAVA_HOME}/bin"), # replacement for `ENV PATH $JAVA_HOME/bin:$PATH`
-    locale(VARIANT, LANG),
+    openjdk_config(MAJOR_VERSION, VERSION,
+                   JAVA_TYPE,
+                   VARIANT,
+                   AMD64_URL, ARM64_URL,
+                   SOURCE),
+    base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, BASE_SETUP_COMMAND)
+        ::append_path(f"${JAVA_HOME}/bin")
+        ::set_env("JAVA_HOME", JAVA_HOME)
+        ::set_env("LANG", LANG)
+        ::set_env("JAVA_VERSION", VERSION),
     (
-        handle_binary(VARIANT, AMD64_URL, ARM64_URL, JAVA_HOME),
+        run(BASE_SETUP_COMMAND),
+        locale(VARIANT, LANG),
+        install_bin(AMD64_URL, ARM64_URL, JAVA_HOME)::copy(JAVA_HOME, JAVA_HOME),
         ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
-        smoke_tests(MAJOR_VERSION, JAVA_TYPE, JAVA_HOME)
+        smoke_tests(MAJOR_VERSION, JAVA_TYPE)
     )::merge,
-    entry_sh(JAVA_HOME, LANG, MAJOR_VERSION, VERSION, JAVA_TYPE).
+    entry_sh(MAJOR_VERSION, JAVA_TYPE).
 
 openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
-    MAJOR_VERSION = MAJOR_VERSION, JAVA_TYPE = JAVA_TYPE, VARIANT = f"windows/${WINDOWS_IMAGE}", "0" = "1" # FIXME: no windows support atm.
+    (
+        VARIANT = f"windows/${WINDOWS_IMAGE}",
+        "0" = "1", # NOTE: no windows support atm. So this will intentionally always fail.
+        openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)
+            ::set_entrypoint("./entry.sh")
     ;
-    openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)::set_entrypoint("./entry.sh").
-
-# Valid variations of OpenJDK
-# TODO: GPG keys, SHA256
-# NOTE:
-# - the official Dockerfile template file is also 'aware' of the architectures allowed.
-# - the major version is separated because some JDK versions don't follow semver.
-openjdk_config("11","11.0.13","jdk","oraclelinux8","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jre","oraclelinux8","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jdk","oraclelinux7","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jre","oraclelinux7","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jdk","bullseye","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jre","bullseye","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jdk","slim-bullseye","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jre","slim-bullseye","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jdk","buster","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jre","buster","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jdk","slim-buster","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jre","slim-buster","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_x64_linux_11.0.13_8.tar.gz","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_aarch64_linux_11.0.13_8.tar.gz","adopt").
-openjdk_config("11","11.0.13","jdk","windows/windowsservercore-ltsc2022","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_x64_windows_11.0.13_8.zip","","adopt").
-openjdk_config("11","11.0.13","jre","windows/windowsservercore-ltsc2022","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_x64_windows_11.0.13_8.zip","","adopt").
-openjdk_config("11","11.0.13","jdk","windows/windowsservercore-1809","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_x64_windows_11.0.13_8.zip","","adopt").
-openjdk_config("11","11.0.13","jre","windows/windowsservercore-1809","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_x64_windows_11.0.13_8.zip","","adopt").
-openjdk_config("11","11.0.13","jdk","windows/nanoserver-1809","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jdk_x64_windows_11.0.13_8.zip","","adopt").
-openjdk_config("11","11.0.13","jre","windows/nanoserver-1809","https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.13%2B8/OpenJDK11U-jre_x64_windows_11.0.13_8.zip","","adopt").
-openjdk_config("17","17.0.2","jdk","oraclelinux8","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("17","17.0.2","jdk","oraclelinux7","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("17","17.0.2","jdk","bullseye","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("17","17.0.2","jdk","slim-bullseye","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("17","17.0.2","jdk","buster","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("17","17.0.2","jdk","slim-buster","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-x64_bin.tar.gz","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("17","17.0.2","jdk","windows/windowsservercore-ltsc2022","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_windows-x64_bin.zip","","oracle").
-openjdk_config("17","17.0.2","jdk","windows/windowsservercore-1809","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_windows-x64_bin.zip","","oracle").
-openjdk_config("17","17.0.2","jdk","windows/nanoserver-1809","https://download.java.net/java/GA/jdk17.0.2/dfd4a8d0985749f896bed50d7138ee7f/8/GPL/openjdk-17.0.2_windows-x64_bin.zip","","oracle").
-openjdk_config("18","18-ea+33","jdk","oraclelinux8","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("18","18-ea+33","jdk","oraclelinux7","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("18","18-ea+33","jdk","bullseye","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("18","18-ea+33","jdk","slim-bullseye","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("18","18-ea+33","jdk","buster","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("18","18-ea+33","jdk","slim-buster","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("18","18-ea+11","jdk","alpine3.15","https://download.java.net/java/early_access/alpine/11/binaries/openjdk-18-ea+11_linux-x64-musl_bin.tar.gz","","oracle").
-openjdk_config("18","18-ea+11","jdk","alpine3.14","https://download.java.net/java/early_access/alpine/11/binaries/openjdk-18-ea+11_linux-x64-musl_bin.tar.gz","","oracle").
-openjdk_config("18","18-ea+33","jdk","windows/windowsservercore-ltsc2022","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_windows-x64_bin.zip","","oracle").
-openjdk_config("18","18-ea+33","jdk","windows/windowsservercore-1809","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_windows-x64_bin.zip","","oracle").
-openjdk_config("18","18-ea+33","jdk","windows/nanoserver-1809","https://download.java.net/java/early_access/jdk18/33/GPL/openjdk-18-ea+33_windows-x64_bin.zip","","oracle").
-openjdk_config("19","19-ea+7","jdk","oraclelinux8","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("19","19-ea+7","jdk","oraclelinux7","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("19","19-ea+7","jdk","bullseye","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("19","19-ea+7","jdk","slim-bullseye","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("19","19-ea+7","jdk","buster","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("19","19-ea+7","jdk","slim-buster","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-x64_bin.tar.gz","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_linux-aarch64_bin.tar.gz","oracle").
-openjdk_config("19","19-ea+5","jdk","alpine3.15","https://download.java.net/java/early_access/alpine/5/binaries/openjdk-19-ea+5_linux-x64-musl_bin.tar.gz","","oracle").
-openjdk_config("19","19-ea+5","jdk","alpine3.14","https://download.java.net/java/early_access/alpine/5/binaries/openjdk-19-ea+5_linux-x64-musl_bin.tar.gz","","oracle").
-openjdk_config("19","19-ea+7","jdk","windows/windowsservercore-ltsc2022","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_windows-x64_bin.zip","","oracle").
-openjdk_config("19","19-ea+7","jdk","windows/windowsservercore-1809","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_windows-x64_bin.zip","","oracle").
-openjdk_config("19","19-ea+7","jdk","windows/nanoserver-1809","https://download.java.net/java/early_access/jdk19/7/GPL/openjdk-19-ea+7_windows-x64_bin.zip","","oracle").
-openjdk_config("8","8u312","jdk","oraclelinux8","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jre","oraclelinux8","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jdk","oraclelinux7","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jre","oraclelinux7","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jdk","bullseye","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jre","bullseye","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jdk","slim-bullseye","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jre","slim-bullseye","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jdk","buster","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jre","buster","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jdk","slim-buster","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jre","slim-buster","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_x64_linux_8u312b07.tar.gz","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_aarch64_linux_8u312b07.tar.gz","adopt").
-openjdk_config("8","8u312","jdk","windows/windowsservercore-ltsc2022","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_x64_windows_8u312b07.zip","","adopt").
-openjdk_config("8","8u312","jre","windows/windowsservercore-ltsc2022","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_x64_windows_8u312b07.zip","","adopt").
-openjdk_config("8","8u312","jdk","windows/windowsservercore-1809","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_x64_windows_8u312b07.zip","","adopt").
-openjdk_config("8","8u312","jre","windows/windowsservercore-1809","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_x64_windows_8u312b07.zip","","adopt").
-openjdk_config("8","8u312","jdk","windows/nanoserver-1809","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jdk_x64_windows_8u312b07.zip","","adopt").
-openjdk_config("8","8u312","jre","windows/nanoserver-1809","https://github.com/AdoptOpenJDK/openjdk8-upstream-binaries/releases/download/jdk8u312-b07/OpenJDK8U-jre_x64_windows_8u312b07.zip","","adopt").
+        openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL)
+            ::set_entrypoint("./entry.sh")
+    ).
 
 debian_variant("bullseye").
 debian_variant("buster").

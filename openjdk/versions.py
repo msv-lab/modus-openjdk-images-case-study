@@ -4,6 +4,7 @@ import json
 import urllib.request, json
 import csv
 from typing import List
+import os
 
 def generate_tabular():
     cols = ['major_version', 'version', 'java_type', 'variant', 'amd64_url', 'arm64v8_url', 'source']
@@ -11,7 +12,12 @@ def generate_tabular():
 
     url = "https://raw.githubusercontent.com/docker-library/openjdk/master/versions.json"
     with urllib.request.urlopen(url) as url_opened:
-        data = json.loads(url_opened.read().decode())
+        decoded = url_opened.read().decode()
+
+        with open("versions.json", "w") as w:
+            w.write(decoded)
+
+        data = json.loads(decoded)
 
         # e.g. .major_version.java_type.arches.arch.url
         for major_version in data:
@@ -75,21 +81,40 @@ def generate_tabular():
 def main():
     cols, rows = generate_tabular()
 
-    with open('versions.csv', 'w') as out:
-        csv_out = csv.writer(out)
-        csv_out.writerow(cols)
-        csv_out.writerows(rows)
+    seen_urls = set()
+    for row in rows:
+        if row[3].startswith("windows"):
+            continue
 
-    def to_fact(row):
-        delims = ('"' + arg + '"' for arg in row)
-        return f"openjdk_config({','.join(delims)})."
+        tup = (row[4], row[5])
+        if tup in seen_urls:
+            continue
+        seen_urls.add(tup)
 
-    with open('facts.Modusfile', 'w') as out:
-        for row in rows:
-            if row[2] == "jre" and row[3].startswith("oraclelinux"):
-                out.write(f"# {to_fact(row)}\n")
-            else:
-                out.write(f"{to_fact(row)}\n")
+        filename = f"binary_dockerfiles/{row[0]}-{row[2]}-{str(row[3].startswith('alpine')).lower()}.Dockerfile"
+        os.makedirs(os.path.dirname(filename), exist_ok=True)
+        with open(filename, 'w') as out:
+            out.write("FROM alpine:latest\n")
+            out.write(f"RUN set -eux; \
+arch=\"$(apk --print-arch)\"; \
+case \"$arch\" in \
+'x86_64') \
+downloadUrl='{tup[0]}'; \
+;; \
+'aarch64') \
+downloadUrl='{tup[1]}'; \
+;; \
+*) echo >&2 \"error: unsupported architecture: '$arch'\"; exit 1 ;; \
+esac; \
+wget -O openjdk.tgz \"$downloadUrl\";\n")
+            out.write("RUN mkdir -p /opt/openjdk; \
+tar --extract \
+--file openjdk.tgz \
+--directory \"/opt/openjdk\" \
+--strip-components 1 \
+--no-same-owner \
+; \
+rm openjdk.tgz*;\n")
 
 if __name__ == "__main__":
     main()

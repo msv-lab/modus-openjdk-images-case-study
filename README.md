@@ -1,40 +1,82 @@
 # Modus' OpenJDK Images 📦
 
-This repository hosts Modusfile(s) intended to generate OpenJDK images.
+The [Docker Official Images](https://github.com/docker-library/official-images) project provides and maintains application runtimes packaged in images, such as [OpenJDK images](https://github.com/docker-library/openjdk). Because Dockerfiles are not sufficently expressive, OpenJDK image build relies on [Dockerfile templates](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), [bash scripts](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh), as well as [jq and awk processing](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk). Often, this serves as a method to conditionally execute instruction, or select between configuration strings. The templated Dockerfile approach has several shortcomings: it requires developing and maintaining ad-hoc, complicated and error-prone string processing scripts, and makes parallelisation less efficient.
 
----
+[Modus](https://modus-continens.com) is a language for building OCI container images. Compared to Dockerfiles, Modus makes it easier to define complex, parameterized builds with zero loss in efficiency w.r.t. build time or image sizes. Furthermore, Modus can make image creation faster via more effective parallelisation. Modus provides a cohesive system that replaces the need for Dockerfile templating, and most of the surrounding ad-hoc scripts. Another advantages of Modus is that using it requires you to think *explicitly* about the ways in which your builds can vary. In contrast, the official images *implicitly* define this through their [JSON versions file](https://github.com/docker-library/openjdk/blob/master/versions.json): it is not sufficient on its own to understand which configurations are valid, since one also needs to check the other scripts or template files. For example, one would need to [check their templating script](https://github.com/docker-library/openjdk/blob/ce82579fcff27d724a50ceaa4f1c140ac0102f39/apply-templates.sh#L47-L49) to realize that Oracle-based JRE images are unsupported.
 
-# Building
+## Code Size
 
-`modus build . 'openjdk(A, B, C)' -f linux.Modusfile` should build all available images.
+A [single 241 line Modusfile](./linux.Modusfile) holds the conditional logic that defines all the varying image builds. In contrast, the templating approach requires a [332 line template file](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), a [77 line script](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh) to apply the template, and a [140 line file](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk) that defines some helper functions using awk and jq.
 
-# Stats
+Below are statistics for (variations of) the `linux.Modusfile` according to `wc`:
+|      Variation                               | Newlines | Words | Bytes |
+|----------------------------------------------|----------|-------|-------|
+| Unedited                                     | 241      | 788   | 9293  |
+| Comments/empty lines removed                 | 219      | 647   | 8384  |
+| Comments/empty lines & select tokens removed | 219      | 602   | 8339  |
 
-## (Linux) All Major Versions, Java Types, and Variants
+Below are the combined statistics for (variations of) the files needed for templating, as mentioned above:
+|      Variation                               | Newlines | Words | Bytes |
+|----------------------------------------------|----------|-------|-------|
+| Unedited                                     | 549      | 2213  | 16140 |
+| Comments/empty lines removed                 | 441      | 1560  | 10657 |
+| Comments/empty lines & select tokens removed | 441      | 1330  | 10187 |
 
-![image](https://user-images.githubusercontent.com/46009390/151715965-33c7e905-5e93-481b-ac26-bce68aa6c091.png)
+## Build Time - AWS EC2 (t2.xlarge)
 
-As shown above, we are able to solve and build all 46 combinations of Linux-based OpenJDK images in under 15 minutes on a single machine.
-This is from scratch, i.e. the time taken for SLD resolution + time taken for parallel build with an empty docker build cache.
+Full details on the t2.xlarge hardware are [here](https://aws.amazon.com/ec2/instance-types/t2/).
 
-## (Outdated) Single Variant and Java Type, Multiple Major Versions
+- We compared performance of the official Dockerfiles and our Modusfile. To provide a baseline for our performance tests, we built the official Dockerfiles sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
+- We built the Dockerfiles in parallel using GNU's `parallel` (to replicate Modus' approach of parallel builds) `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`.
+- We executed Modus using the command `time modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. This builds the same 40 images[^image-count] that were built through the official approach.
+All builds were executed with empty Docker build cache.
 
-TODO: update
+Modus performs better than the other approaches due to the parallel builds performed by our front-end to BuildKit, in addition to an image caching optimization.
 
-An example of a typical use case, such as building all versions of OpenJDK from some base image:
-![image](https://user-images.githubusercontent.com/46009390/151683270-eed95d58-8a97-4643-bc51-834b8f3e0ce8.png)
+[^image-count]: The number of images and the binaries themselves vary, so this is the number of images available at the time we conducted the benchmarks.
 
-## Efficiency
+### OpenJDK optimizations without Modus
 
-We used [dive](https://github.com/wagoodman/dive) which provides an estimate of image efficiency[^1]. All the images we built scored over 95% image efficiency.
+The official Dockerfiles do not take advantage of either multi-stage builds or the caching which would be easier to implement[^cache] with multi-stage builds.
+Since these are the primary ways Modus improves on performance, we decided to extend the existing OpenJDK approach to implement these optimizations _without Modus_.
 
-![image](https://user-images.githubusercontent.com/46009390/151718407-ba89e8d3-f2be-4ffe-a861-8cbb211395c0.png)
+These hand written optimizations actually did not perform better **on average** than the naive parallel builds. This may be due to the overhead of copying gigabytes of data which is how we attempted to manually optimize the build. In addition, it is quite possible that for a number of parallel builds, the order of the builds simply happened to be the one that avoided duplicate fetching of binaries (since GNU's `parallel` does not run *all* the builds at once, by default).
+This does show that an even more complicated approach would be required for consistently better performance, motivating the use of a system like Modus.
 
-[^1]: Wasted space such as duplicating files across layers count as an 'inefficiency'.
+[^cache]: Simply adding multi-stage builds does not give 'free' caching if one builds images in parallel.
 
-## Compactness
+### Summary
 
-A [single 300-350 line file](./linux.Modusfile) is all that's required to build this through Modus. In contrast, [the templating approach](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template) requires a 330 line template file in addition to a shell script and json configuration that add over 100 more lines.
+Applying the templates to generate the official OpenJDK Dockerfiles took **121.1s**, averaged over 10 runs.
+
+Here are the full results averaged over 10 runs for each approach. The final column simply adds 121.1s where appropriate.
+
+| Approach | Time | Time + Template Processing |
+|--|--|--|
+| Official Dockerfiles sequentially | 686.0s | 807.1s |
+| Official Dockerfiles in parallel | 284.6 | 405.7 |
+| Official Dockerfiles w/ our hand-written optimizations | 288.4 | 409.5 |
+| Modus | 280.5 | 280.5 |
+
+## Image Efficiency
+
+We used [dive](https://github.com/wagoodman/dive) which provides an estimate of image efficiency. 
+An example of an 'inefficiency' would be moving files across layers - this is a change that needs to be recorded as part of the layer, yet could be avoided by rewriting the Dockerfile.
+
+All the images we built scored over 95% image efficiency:
+
+![image](https://user-images.githubusercontent.com/46009390/152662059-67ecc65e-6b41-4dc8-b18a-082e98597bd5.png)
+
+The official OpenJDK images also score highly on image efficiency (all above 95%), but at a cost to readability and separability.
+Nearly [half of their Dockerfile](https://github.com/docker-library/openjdk/blob/ffcc4b9190be32ed7c4c92f6aa8fe2463da291d6/Dockerfile-linux.template#L187-L332) is a single `RUN` layer, to avoid the issue of modifications recorded in the layer diffs bloating the image size.
+
+Modus provides a `merge` operator to solve this issue, which helped us achieve high image efficiency scores. `merge` is an operator that will merge the underlying commands of an expression into one `RUN` layer.
+
+https://github.com/modus-continens/openjdk-images-case-study/blob/5c9783c4cc9d37ab56da529434e876de1f422219/linux.Modusfile#L267-L271
+
+In this case, if we remove the `merge`, the image efficiency drops to about 75%. One operation that contributes to the inefficiency is updating `cacerts` in a separate `RUN` layer, and there may be other similar operations performed within the body of this `merge` that create a new layer with _avoidable_ diffs.
+
+This demonstrates that `merge` facilitates the best of both worlds: the readability of separating out sections of code without the inefficiency of more layers recording more diffs.
 
 # OpenJDK Configuration
 
@@ -54,12 +96,6 @@ The variables exposed to a user are (a subset of the above):
 
 So a user may request a goal of `openjdk(A, "jdk", "alpine3.15")` to build all versions of JDK on Alpine.
 
-# Disclaimer
-
-The images we generate do not have identical layers. However, their filesystems and behaviour should be very close. Eventually their behaviour should be identical, but the goal is not (necessarily) to have identical *layers*.
-
-In addition, we currently build more images than provided on Docker. So performance may be better than described.
-
 ## Notes on Docker's Official Workflow
 
 This attempts to be a tldr for https://github.com/docker-library/official-images,
@@ -76,9 +112,3 @@ jq/awk. This seems to use shared helper functions from bashbrew.
 the different combinations of images allowed.
 
 A good short example of an improvement over their template file is https://github.com/docker-library/openjdk/blob/f8d1fd911fdcad985d7a534e3470a9c54c87d45f/Dockerfile-linux.template#L36-L60.
-
-## Note on Multi-Arch
-
-Docker's OpenJDK image creation relies on determining the architecture at runtime.
-Which allows them to isolate the logic that is specific to that architecture, and
-also, I think, take advantage of `buildx`'s multi platform building (through QEMU).

@@ -1,0 +1,3 @@
+FROM alpine:latest
+RUN set -eux; arch="$(apk --print-arch)"; case "$arch" in 'x86_64') downloadUrl='https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jre_x64_linux_11.0.14.1_1.tar.gz'; ;; 'aarch64') downloadUrl='https://github.com/AdoptOpenJDK/openjdk11-upstream-binaries/releases/download/jdk-11.0.14.1%2B1/OpenJDK11U-jre_aarch64_linux_11.0.14.1_1.tar.gz'; ;; *) echo >&2 "error: unsupported architecture: '$arch'"; exit 1 ;; esac; wget -O openjdk.tgz "$downloadUrl";
+RUN mkdir -p /opt/openjdk; tar --extract --file openjdk.tgz --directory "/opt/openjdk" --strip-components 1 --no-same-owner ; rm openjdk.tgz*;
