@@ -35,5 +35,8 @@ jobs:
       - name: Tag images
         run: jq '.[] | [.digest, (.args | join("-"))] | join(" ")' build.json | xargs -I % sh -c 'docker tag %'
 
+      - name: Compare image sizes
+        run: jq '.[].args | join("-")' build.json | xargs -I % sh -c 'docker pull openjdk:%; docker images | grep %;'
+
       - name: View docker images
         run: docker images
