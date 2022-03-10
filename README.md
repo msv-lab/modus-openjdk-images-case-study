@@ -54,9 +54,9 @@ Here are the full results averaged over **12 runs** for each approach. The final
 | Approach | Time | Time + Template Processing |
 |--|--|--|
 | Official Dockerfiles sequentially | 907.8s | 1028.9s |
-| Official Dockerfiles in parallel | 264.2s | 385.3 |
-| Official Dockerfiles w/ our hand-written optimizations | 287.4 | 408.5 |
-| Modus | 145.5 | 145.5 |
+| Official Dockerfiles in parallel | 264.2s | 385.3s |
+| Official Dockerfiles w/ our hand-written optimizations | 287.4s | 408.5s |
+| Modus | 145.5s | 145.5s |
 
 We used a local Docker registry that caches base images, so all the above times would be slightly faster than without such a local registry.
 
