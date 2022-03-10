@@ -73,8 +73,7 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, BASE_SETUP_COMMAND) :-
     (
         is_alpine(VARIANT, ALPINE_VERSION),
         from(f"alpine:${ALPINE_VERSION}"),
-        # NOTE: bash added for entrypoint script, it's NOT present in the real OpenJDK
-        BASE_SETUP_COMMAND = "apk add --no-cache java-cacerts --upgrade bash",
+        BASE_SETUP_COMMAND = "apk add --no-cache java-cacerts",
         JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}"
     ;
         is_oracle(VARIANT, ORACLE_VERSION),
@@ -215,18 +214,23 @@ smoke_tests(MAJOR_VERSION, JAVA_TYPE) :-
     ),
     run(COMMAND).
 
-entry_sh(MAJOR_VERSION, JAVA_TYPE) :-
+entry_sh(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
+    (
+        is_alpine(VARIANT, _), SHELL = "ash"
+    ;
+        !is_alpine(VARIANT, _), SHELL = "bash"
+    ),
     (
         MAJOR_VERSION = "8", JAVA_TYPE = JAVA_TYPE,
-        COMMAND = "bash" # HACK: Probably shouldn't assume bash
+        COMMAND = SHELL
     ;
         number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jre",
-        COMMAND = "bash"
+        COMMAND = SHELL
     ;
         number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jdk",
         COMMAND = "jshell" # jshell only launched if jdk
     ),
-    run(f"echo '#!/bin/bash' > entry.sh; echo '${COMMAND}' >> entry.sh; chmod +x entry.sh").
+    run(f"echo '#!/bin/${SHELL}' > entry.sh; echo '${COMMAND}' >> entry.sh; chmod +x entry.sh").
 
 openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, SOURCE) :-
     openjdk_config(MAJOR_VERSION, VERSION,
@@ -246,7 +250,7 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, 
         ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
         smoke_tests(MAJOR_VERSION, JAVA_TYPE)
     )::merge,
-    entry_sh(MAJOR_VERSION, JAVA_TYPE).
+    entry_sh(MAJOR_VERSION, JAVA_TYPE, VARIANT).
 
 openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
     (
