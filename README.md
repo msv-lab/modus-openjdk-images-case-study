@@ -22,7 +22,7 @@ Below are the combined statistics for (variations of) the files needed for templ
 | Comments/empty lines removed                 | 441      | 1560  | 10657 |
 | Comments/empty lines & select tokens removed | 441      | 1330  | 10187 |
 
-## Build Time - AWS EC2 (c5.2xlarge)
+## Build Time - AWS (c5.2xlarge)
 
 Full details on the c5.2xlarge hardware are [here](https://aws.amazon.com/ec2/instance-types/c5/).
 
