@@ -22,9 +22,9 @@ Below are the combined statistics for (variations of) the files needed for templ
 | Comments/empty lines removed                 | 441      | 1560  | 10657 |
 | Comments/empty lines & select tokens removed | 441      | 1330  | 10187 |
 
-## Build Time - AWS EC2 (t2.xlarge)
+## Build Time - AWS EC2 (c5.2xlarge)
 
-Full details on the t2.xlarge hardware are [here](https://aws.amazon.com/ec2/instance-types/t2/).
+Full details on the c5.2xlarge hardware are [here](https://aws.amazon.com/ec2/instance-types/c5/).
 
 - We compared performance of the official Dockerfiles and our Modusfile. To provide a baseline for our performance tests, we built the official Dockerfiles sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
 - We built the Dockerfiles in parallel using GNU's `parallel` (to replicate Modus' approach of parallel builds) `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`.
@@ -47,16 +47,18 @@ This does show that an even more complicated approach would be required for cons
 
 ### Summary
 
-Applying the templates to generate the official OpenJDK Dockerfiles took **121.1s**, averaged over 10 runs.
+Applying the templates to generate the official OpenJDK Dockerfiles took **121.1s**, averaged over **10 runs**.
 
-Here are the full results averaged over 10 runs for each approach. The final column simply adds 121.1s where appropriate.
+Here are the full results averaged over **12 runs** for each approach. The final column simply adds 121.1s where appropriate.
 
 | Approach | Time | Time + Template Processing |
 |--|--|--|
-| Official Dockerfiles sequentially | 686.0s | 807.1s |
-| Official Dockerfiles in parallel | 284.6 | 405.7 |
-| Official Dockerfiles w/ our hand-written optimizations | 288.4 | 409.5 |
-| Modus | 280.5 | 280.5 |
+| Official Dockerfiles sequentially | 907.8s | 1028.9s |
+| Official Dockerfiles in parallel | 264.2s | 385.3 |
+| Official Dockerfiles w/ our hand-written optimizations | 287.4 | 408.5 |
+| Modus | 145.5 | 145.5 |
+
+We used a local Docker registry that caches base images, so all the above times would be slightly faster than without such a local registry.
 
 ## Image Efficiency
 
