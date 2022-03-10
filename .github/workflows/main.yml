@@ -47,6 +47,7 @@ jobs:
         run: jq '.[] | [.digest, (.args | join("-"))] | join(" ")' build.json | xargs -I % sh -c 'docker tag %'
         
       - name: Push packages
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
         run: jq '.[].args | join("-")' build.json | xargs -I % sh -c 'docker tag % ghcr.io/$GITHUB_REPOSITORY:% && docker push ghcr.io/$GITHUB_REPOSITORY:%'
         
       - name: Compare image sizes
