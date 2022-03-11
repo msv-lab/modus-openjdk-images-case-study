@@ -51,12 +51,12 @@ Applying the templates to generate the official OpenJDK Dockerfiles took **121.1
 
 Here are the full results averaged over **12 runs** for each approach. The final column simply adds 121.1s where appropriate.
 
-| Approach | Time | Time + Template Processing |
+| Approach | Time (95% Confidence Interval) | Time + Template Processing |
 |--|--|--|
-| Official Dockerfiles sequentially | 907.8s | 1028.9s |
-| Official Dockerfiles in parallel | 264.2s | 385.3s |
-| Official Dockerfiles w/ our hand-written optimizations | 287.4s | 408.5s |
-| Modus | 145.5s | 145.5s |
+| Official Dockerfiles sequentially | 907.8s (893.3, 922.3) | 1028.9s |
+| Official Dockerfiles in parallel | 264.2s (260.5, 267.9) | 385.3s |
+| Official Dockerfiles w/ our hand-written optimizations | 287.4s (277.5, 297.3) | 408.5s |
+| Modus | 145.5s (144.0, 146.9) | 145.5s |
 
 We used a local Docker registry that caches base images, so all the above times would be slightly faster than without such a local registry.
 
