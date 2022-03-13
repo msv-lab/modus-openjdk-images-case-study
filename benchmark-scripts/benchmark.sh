@@ -14,12 +14,13 @@ cd openjdk
 ./update.sh
 cd ../../
 
-for i in {1..10}
+for i in {1..15}
 do
     docker builder prune -a -f && docker image prune -a -f;
     /usr/bin/time -o benchmarks/modus-time.log -a -p modus build ./openjdk-images-case-study 'openjdk(A, B, C)' -f <(cat ./openjdk-images-case-study/*.Modusfile) \
         --image-export-concurrency=8 \
-        --image-resolve-concurrency=8;
+        --image-resolve-concurrency=8 \
+        --output-profiling="benchmarks/modus_profile_$i.log";
 
     docker builder prune -a -f && docker image prune -a -f;
     fdfind Dockerfile$ ./openjdk | rg -v windows | /usr/bin/time -o benchmarks/official.log -a -p xargs -I % sh -c 'docker build ./openjdk -f %';
