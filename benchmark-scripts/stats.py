@@ -12,7 +12,8 @@ def main():
         d[approach].append(float(real))
 
     for k in d.keys():
-        vals = d[k][:12]
+        assert(len(d[k]) >= 15)
+        vals = d[k][:15]
         sample_mean = sum(vals)/len(vals)
         sample_stdev = statistics.stdev(vals, xbar=sample_mean)
         interval = st.t.interval(0.95, len(vals)-1, loc=sample_mean, scale=st.sem(vals))
