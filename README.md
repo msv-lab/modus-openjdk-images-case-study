@@ -49,14 +49,17 @@ This does show that an even more complicated approach would be required for cons
 
 Applying the templates to generate the official OpenJDK Dockerfiles took **121.1s**, averaged over **10 runs**.
 
-Here are the full results averaged over **12 runs** for each approach. The final column simply adds 121.1s where appropriate.
+Here are the full results averaged over **15 runs** for each approach. The final column simply adds 121.1s where appropriate.
+We've included the exporting time, which is a subset of the total build time using Modus, since this represents an operation
+performed by Modus that could reduced in future versions.
 
-| Approach | Time (95% Confidence Interval) | Time + Template Processing |
+| Benchmark | Time (95% Confidence Interval) | Time + Template Processing |
 |--|--|--|
-| Official Dockerfiles sequentially | 907.8s (893.3, 922.3) | 1028.9s |
-| Official Dockerfiles in parallel | 264.2s (260.5, 267.9) | 385.3s |
-| Official Dockerfiles w/ our hand-written optimizations | 287.4s (277.5, 297.3) | 408.5s |
-| Modus | 145.5s (144.0, 146.9) | 145.5s |
+| Official Dockerfiles sequentially | 525.6s (516.1, 535.1) | 525.6s + 121.1s |
+| Official Dockerfiles in parallel | 118.0s (116.9, 119.1) | 118.0s + 121.1s |
+| Official Dockerfiles w/ our hand-written optimizations | 276.9s (266.3, 287.6) | 276.9s + 121.1s |
+| Build w/ Modus | 139.4s (138.4, 140.3) | 139.4s |
+| Modus - Exporting Time | 18.2s (18.0, 18.4) | N/A |
 
 We used a local Docker registry that caches base images, so all the above times would be slightly faster than without such a local registry.
 
