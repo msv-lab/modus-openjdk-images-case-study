@@ -13,14 +13,14 @@ Below are statistics for (variations of) the `linux.Modusfile` according to `wc`
 |----------------------------------------------|----------|-------|-------|
 | Unedited                                     | 267      | 869   | 10389  |
 | Comments/empty lines removed                 | 246      | 750   | 9607  |
-| Comments/empty lines & select tokens removed | 246      | 695   | 9552  |
+| Comments/empty lines & select tokens removed | 244      | 695   | 9552  |
 
 Below are the combined statistics for (variations of) the files needed for templating, as mentioned above:
 |      Variation                               | Newlines | Words | Bytes |
 |----------------------------------------------|----------|-------|-------|
 | Unedited                                     | 549      | 2213  | 16140 |
 | Comments/empty lines removed                 | 441      | 1560  | 10657 |
-| Comments/empty lines & select tokens removed | 441      | 1330  | 10187 |
+| Comments/empty lines & select tokens removed | 403      | 1330  | 10130 |
 
 ## Build Time - AWS (c5.2xlarge)
 
