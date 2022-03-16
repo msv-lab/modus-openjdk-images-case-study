@@ -18,20 +18,26 @@ function estimate()
     # - '\' at the end of a line.
     # - '{{' (removed only if it's a template file)
     # - '}}' or '-}}' (removed only if it's a template file)
+    # - '[ \t]+' replaced with a single space
+    # - trailing whitespaces
     # as well as all the comments and empty lines removed.
 
     case "$1" in
         *template*)
             sed 's/#.*//' $1 \
                 | sed 's/\\$//' \
-                | sed 's/{{//' \
-                | sed 's/-\?}}//' \
+                | sed 's/{{//g' \
+                | sed 's/-\?}}//g' \
+                | sed 's/[ \t]\+/ /g' \
+                | sed 's/\s\+$//g' \
                 | sed '/^\s*$/d' \
                 | wc
             ;;
         *)
             sed 's/#.*//' $1 \
-                | sed 's/\\$//' \
+                | sed 's/\\$//g' \
+                | sed 's/[ \t]\+/ /g' \
+                | sed 's/\s\+$//g' \
                 | sed '/^\s*$/d' \
                 | wc
             ;;
