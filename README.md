@@ -55,13 +55,13 @@ This does show that an even more complicated approach would be required for (con
 
 ### Summary
 
-Applying the templates to generate the official OpenJDK Dockerfiles took **μ_t = 121.1s**, averaged over **10 runs**.
+Applying the templates to generate the DOBS' Dockerfiles took **μ_t = 121.1s**, averaged over **10 runs**.
 
 Here are the full results averaged over **10 runs** for each approach. The final column simply adds 121.1s where appropriate.
 We've included the exporting time, which is a subset of the total build time using Modus, since this represents an operation
 performed by Modus that could reduced in future versions.
 
-| DOBS Variant        | μ (s) | μ + μ_t (s) |
+| DOBS                | μ (s) | μ + μ_t (s) |
 |---------------------|-------|-------------|
 | Sequential          | 516.3 | 637.4       |
 | Parallel            | 119.8 | 240.9       |
