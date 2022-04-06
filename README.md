@@ -6,7 +6,7 @@ This serves as a method to conditionally execute instructions, or select between
 The reliance on _ad hoc_ solutions such as awk/jq templating causes maintainability problems. Firstly, developers must learn and be proficient in multiple languages and tooling to maintain the image build definitions and generation scripts. Secondly, these image build definitions are verbose.
 
 [Modus](https://modus-continens.com) is a language for building OCI container images. Compared to Dockerfiles, Modus makes it easier to define complex, parameterized builds with negligible loss in efficiency w.r.t. build time or image sizes. 
-Modus provides a cohesive system that replaces the need for Dockerfile templating. Another advantages of Modus is that using it requires you to think *explicitly* about the ways in which your builds can vary. In contrast, the official images *implicitly* define this through their [JSON versions file](https://github.com/docker-library/openjdk/blob/master/versions.json): it is not sufficient on its own to understand which configurations are valid, since one also needs to check the other scripts or template files. For example, one would need to [check their templating script](https://github.com/docker-library/openjdk/blob/ce82579fcff27d724a50ceaa4f1c140ac0102f39/apply-templates.sh#L47-L49) to realize that Oracle-based JRE images are unsupported.
+Modus provides a cohesive system that replaces the need for Dockerfile templating. Another advantages of Modus is that using it requires you to think *explicitly* about the ways in which your builds can vary. In contrast, DOBS *implicitly* define this through their [JSON versions file](https://github.com/docker-library/openjdk/blob/master/versions.json): it is not sufficient on its own to understand which configurations are valid, since one also needs to check the other scripts or template files. For example, one would need to [check their templating script](https://github.com/docker-library/openjdk/blob/ce82579fcff27d724a50ceaa4f1c140ac0102f39/apply-templates.sh#L47-L49) to realize that Oracle-based JRE images are unsupported.
 
 ## Code Size
 
@@ -30,9 +30,9 @@ Below are the combined statistics for (variations of) the files needed for templ
 
 Full details on the c5.2xlarge hardware are [here](https://aws.amazon.com/ec2/instance-types/c5/).
 
-- We compared performance of the official Dockerfiles and our Modusfile. To provide a baseline for our performance tests, we built the official Dockerfiles sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
-- We built the Dockerfiles in parallel using GNU's `parallel` (to replicate Modus' approach of parallel builds) `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`.
-- We executed Modus using the command `time modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. This builds the same 40 images[^image-count] that were built through the official approach.
+- We compared performance of DOBS' Dockerfiles and our Modusfile. To provide a baseline for our performance tests, we built DOBS' Dockerfiles sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
+- We built DOBS' Dockerfiles in parallel using GNU's `parallel` (to replicate Modus' approach of parallel builds) `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`.
+- We executed Modus using the command `time modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. This builds the same 40 images[^image-count] that were built through DOBS.
 All builds were executed with empty Docker build cache.
 
 Modus performs better than the other approaches since DOBS' template processing took a significant fraction of the total time to build images.
@@ -41,7 +41,7 @@ Modus performs better than the other approaches since DOBS' template processing 
 
 ### OpenJDK optimizations without Modus
 
-The official Dockerfiles do not take advantage of either multi-stage builds or the caching which would be easier to implement[^cache] with multi-stage builds.
+The DOBS' Dockerfiles do not take advantage of either multi-stage builds or the caching which would be easier to implement[^cache] with multi-stage builds.
 Since these are the primary ways Modus improves on performance, we decided to extend the existing OpenJDK approach to implement these optimizations _without Modus_.
 
 These hand written optimizations actually did not perform better than the naive parallel builds. 
@@ -82,9 +82,9 @@ An example of an 'inefficiency' would be moving files across layers - this is a 
 | Approach | Average Efficiency |
 |--|--:|
 | Built with our Modusfiles | 98.9 |
-| Official OpenJDK Images | 98.8 |
+| DOBS' Images | 98.8 |
 
-The official OpenJDK images also score highly on image efficiency (all above 95%), but at a cost to readability and separability.
+DOBS' images score highly on image efficiency (all above 95%), but at a cost to readability and separability.
 Nearly [half of their Dockerfile](https://github.com/docker-library/openjdk/blob/ffcc4b9190be32ed7c4c92f6aa8fe2463da291d6/Dockerfile-linux.template#L187-L332) is a single `RUN` layer, to avoid the issue of modifications recorded in the layer diffs bloating the image size.
 
 Modus provides a `merge` operator to solve this issue, which helped us achieve high image efficiency scores. `merge` is an operator that will merge the underlying commands of an expression into one `RUN` layer.
@@ -104,7 +104,7 @@ The variables exposed to a user are (a subset of the parameters that can vary fo
 
 So a user may request a goal of `openjdk(A, "jdk", "alpine3.15")` to build all versions of JDK on Alpine.
 
-Below is a complete list that shows the ways in which our OpenJDK configuration can vary, heavily inspired by the [official approach taken](https://github.com/docker-library/openjdk):
+Below is a complete list that shows the ways in which our OpenJDK configuration can vary, heavily inspired by the [DOBS' approach](https://github.com/docker-library/openjdk):
 - Major application version
 - Full version
 - Java Type (JDK vs JRE)
