@@ -14,17 +14,17 @@ A [single 267 line Modusfile](./linux.Modusfile) holds the conditional logic tha
 
 Below are statistics for (variations of) the `linux.Modusfile` according to `wc` applied to variations of the files:
 |      Variation                               | Newlines | Words | Bytes |
-|----------------------------------------------|----------|-------|-------|
-| Unedited                                     | 267      | 869   | 10389  |
+|----------------------------------------------|---------:|------:|------:|
+| Unedited                                     | 267      | 869   | 10389 |
 | Comments/empty lines removed                 | 246      | 750   | 9607  |
-| Comments/empty lines & select tokens removed | 244      | 695   | 9552  |
+| Comments/empty lines & select tokens removed | 244      | 695   | 7645  |
 
 Below are the combined statistics for (variations of) the files needed for templating, as mentioned above:
 |      Variation                               | Newlines | Words | Bytes |
-|----------------------------------------------|----------|-------|-------|
-| Unedited                                     | 549      | 2213  | 16140 |
-| Comments/empty lines removed                 | 441      | 1560  | 10657 |
-| Comments/empty lines & select tokens removed | 403      | 1330  | 10130 |
+|----------------------------------------------|---------:|------:|------:|
+| Unedited                                     | 549      | 2209  | 16109 |
+| Comments/empty lines removed                 | 441      | 1556  | 10626 |
+| Comments/empty lines & select tokens removed | 403      | 1326  |  9642 |
 
 ## Build Time - AWS (c5.2xlarge)
 
@@ -35,7 +35,7 @@ Full details on the c5.2xlarge hardware are [here](https://aws.amazon.com/ec2/in
 - We executed Modus using the command `time modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. This builds the same 40 images[^image-count] that were built through the official approach.
 All builds were executed with empty Docker build cache.
 
-Modus performs better than the other approaches due to the parallel builds performed by our front-end to BuildKit, in addition to an image caching optimization.
+Modus performs better than the other approaches since DOBS' template processing took a significant fraction of the total time to build images.
 
 [^image-count]: The number of images and the binaries themselves vary, so this is the number of images available at the time we conducted the benchmarks.
 
@@ -63,7 +63,7 @@ performed by Modus that could reduced in future versions.
 
 TODO. For now see: https://github.com/modus-continens/modus/issues/92#issuecomment-1070989681
 
-We used a local Docker registry that caches base images, so all the above times would be slightly faster than without such a local registry.
+We used a local Docker registry that caches base images to avoid rate limiting. This leads to a minor speedup, consistent for any of the approaches (i.e. all approaches use these cached base images).
 
 ## Image Efficiency
 
@@ -71,7 +71,7 @@ We used [dive](https://github.com/wagoodman/dive) which provides an estimate of 
 An example of an 'inefficiency' would be moving files across layers - this is a change that needs to be recorded as part of the layer, yet could be avoided by rewriting the Dockerfile.
 
 | Approach | Average Efficiency |
-|--|--|
+|--|--:|
 | Built with our Modusfiles | 98.9 |
 | Official OpenJDK Images | 98.8 |
 
@@ -86,9 +86,16 @@ In this case, if we remove the `merge`, the image efficiency drops to about 75%.
 
 This demonstrates that `merge` facilitates the best of both worlds: the readability of separating out sections of code without the inefficiency of more layers recording more diffs.
 
-# OpenJDK Configuration
+# Querying our Build System
 
-Below is a list that shows the ways in which our OpenJDK configuration can 'vary', heavily inspired by the [official approach taken](https://github.com/docker-library/openjdk):
+The variables exposed to a user are (a subset of the parameters that can vary for a build):
+- Major application version
+- Java Type
+- Variant
+
+So a user may request a goal of `openjdk(A, "jdk", "alpine3.15")` to build all versions of JDK on Alpine.
+
+Below is a complete list that shows the ways in which our OpenJDK configuration can vary, heavily inspired by the [official approach taken](https://github.com/docker-library/openjdk):
 - Major application version
 - Full version
 - Java Type (JDK vs JRE)
@@ -97,26 +104,6 @@ Below is a list that shows the ways in which our OpenJDK configuration can 'vary
 - ARM64 Binary URL
 - Source
 
-The variables exposed to a user are (a subset of the above):
-- Major application version
-- Java Type
-- Variant
+## Diagram of Docker's OpenJDK Build System (DOBS)
 
-So a user may request a goal of `openjdk(A, "jdk", "alpine3.15")` to build all versions of JDK on Alpine.
-
-## Notes on Docker's Official Workflow
-
-This attempts to be a tldr for https://github.com/docker-library/official-images,
-specific to OpenJDK.
-This may not be entirely accurate.
-
-- `update.sh` calls `versions.sh` and `apply-templates.sh`.
-- `versions.sh` updates `versions.json`
-- `generate-stackbrew-library.sh` generates a summary of the available
-images in a well-defined format (shared amongst similar repos).
-- `apply-templates.sh` applies the linux/windows Dockerfile template using
-jq/awk. This seems to use shared helper functions from bashbrew.
-- The GH action jobs are generated using bashbrew, essentially based on
-the different combinations of images allowed.
-
-A good short example of an improvement over their template file is https://github.com/docker-library/openjdk/blob/f8d1fd911fdcad985d7a534e3470a9c54c87d45f/Dockerfile-linux.template#L36-L60.
+![image](https://user-images.githubusercontent.com/46009390/161997869-e541108b-bc21-446b-8450-36475d05b88b.png)
