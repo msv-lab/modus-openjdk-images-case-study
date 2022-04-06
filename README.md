@@ -3,14 +3,14 @@
 The [Docker Official Images](https://github.com/docker-library/official-images) project provides and maintains application runtimes packaged in images, such as [OpenJDK images](https://github.com/docker-library/openjdk), which we will refer to as _Docker's OpenJDK build system_ or DOBS.
 Due to the limitations of Dockerfiles, DOBS relies on [Dockerfile templates](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), [bash scripts](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh), as well as [jq and awk processing](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk).
 This serves as a method to conditionally execute instructions, or select between configuration strings. 
-The reliance on _ad hoc_ solutions such as awk/jq templating causes maintainability problems. Firstly, developers must learn and be proficient in multiple languages and tooling to maintain the image build definitions and generation scripts. Secondly, these image build definitions are verbose.
+The reliance on _ad hoc_ solutions such as awk/jq templating causes maintainability problems. Firstly, developers must learn and be proficient in multiple languages and tooling to maintain the image build definitions and generation scripts. Secondly, these image build definitions are verbose (see [here](#code-size)).
 
 [Modus](https://modus-continens.com) is a language for building OCI container images. Compared to Dockerfiles, Modus makes it easier to define complex, parameterized builds with negligible loss in efficiency w.r.t. build time or image sizes. 
 Modus provides a cohesive system that replaces the need for Dockerfile templating. Another advantages of Modus is that using it requires you to think *explicitly* about the ways in which your builds can vary. In contrast, the official images *implicitly* define this through their [JSON versions file](https://github.com/docker-library/openjdk/blob/master/versions.json): it is not sufficient on its own to understand which configurations are valid, since one also needs to check the other scripts or template files. For example, one would need to [check their templating script](https://github.com/docker-library/openjdk/blob/ce82579fcff27d724a50ceaa4f1c140ac0102f39/apply-templates.sh#L47-L49) to realize that Oracle-based JRE images are unsupported.
 
 ## Code Size
 
-A [single 267 line Modusfile](./linux.Modusfile) holds the conditional logic that defines all the varying image builds. In contrast, the templating approach requires a [332 line template file](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), a [77 line script](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh) to apply the template, and a [140 line file](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk) that defines some helper functions using awk and jq.
+A [single 267 line Modusfile](./linux.Modusfile) holds the conditional logic that defines all the varying image builds. In contrast, DOBS' templating approach requires a [332 line template file](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), a [77 line script](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh) to apply the template, and a [140 line file](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk) that defines some helper functions using awk and jq.
 
 Below are statistics for (variations of) the `linux.Modusfile` according to `wc` applied to variations of the files:
 |      Variation                               | Newlines | Words | Bytes |
@@ -30,12 +30,10 @@ Below are the combined statistics for (variations of) the files needed for templ
 
 Full details on the c5.2xlarge hardware are [here](https://aws.amazon.com/ec2/instance-types/c5/).
 
-- We compared performance of the official Dockerfiles and our Modusfile. To provide a baseline for our performance tests, we built the official Dockerfiles sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
-- We built the Dockerfiles in parallel using GNU's `parallel` (to replicate Modus' approach of parallel builds) `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`.
+- We compared performance of DOBS' Dockerfiles and our Modusfile. To provide a baseline for our performance tests, we built DOBS' Dockerfiles sequentially using a shell script `time fdfind Dockerfile$ | rg -v windows | xargs -I % sh -c 'docker build . -f %'`.
+- We built DOBS' Dockerfiles in parallel using GNU's `parallel` (to replicate Modus' approach of parallel builds) `time fdfind Dockerfile$ | rg -v windows | parallel --bar docker build . -f {}`.
 - We executed Modus using the command `time modus build . 'openjdk(A, B, C)' -f <(cat *.Modusfile)` to build all available images. This builds the same 40 images[^image-count] that were built through the official approach.
 All builds were executed with empty Docker build cache.
-
-Modus performs better than the other approaches since DOBS' template processing took a significant fraction of the total time to build images.
 
 [^image-count]: The number of images and the binaries themselves vary, so this is the number of images available at the time we conducted the benchmarks.
 
@@ -61,7 +59,21 @@ Here are the full results averaged over **10 runs** for each approach. The final
 We've included the exporting time, which is a subset of the total build time using Modus, since this represents an operation
 performed by Modus that could reduced in future versions.
 
-TODO. For now see: https://github.com/modus-continens/modus/issues/92#issuecomment-1070989681
+<div class="tabular">
+
+c c c c & Approach & *μ* (s) & *μ* + *μ*<sub>*t*</sub> (s)  
+\*
+
+OpenJDK  
+Dockerfiles
+
+& Sequential & 516.3 & 637.4  
+& Parallel & 119.8 & 240.9  
+& Manual Optim. & 276.7 & 397.8  
+\*Modus & Total & 143.1 & 143.1  
+& Exporting & 18.0 & N/A  
+
+</div>
 
 We used a local Docker registry that caches base images to avoid rate limiting. This leads to a minor speedup, consistent for any of the approaches (i.e. all approaches use these cached base images).
 
