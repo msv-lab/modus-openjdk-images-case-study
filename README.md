@@ -1,11 +1,11 @@
 # Modus' OpenJDK Images 📦
 
 The [Docker Official Images](https://github.com/docker-library/official-images) project provides and maintains application runtimes packaged in images, such as [OpenJDK images](https://github.com/docker-library/openjdk), which we will refer to as _Docker's OpenJDK build system_ or DOBS.
-Due to the limitations of Dockerfiles, DOBS relies on [Dockerfile templates](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), [bash scripts](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh), as well as [jq and awk processing](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk).
+Due to limitations of Dockerfiles, DOBS relies on [Dockerfile templates](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), [bash scripts](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh), as well as [jq and awk processing](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk).
 This serves as a method to conditionally execute instructions, or select between configuration strings. 
-The reliance on _ad hoc_ solutions such as awk/jq templating causes maintainability problems. Firstly, developers must learn and be proficient in multiple languages and tooling to maintain the image build definitions and generation scripts. Secondly, these image build definitions are verbose (see [here](#code-size)).
+The reliance on _ad hoc_ solutions, such as awk/jq templating, causes maintainability problems. Firstly, developers must learn and be proficient in multiple languages and frameworks to maintain the image build definitions and generation scripts. Secondly, these image build definitions are [verbose](#code-size).
 
-[Modus](https://modus-continens.com) is a language for building OCI container images. Compared to Dockerfiles, Modus makes it easier to define complex, parameterized builds with negligible loss in efficiency w.r.t. build time (see [here](#summary)) or image size (see [here](#image-efficiency)). 
+[Modus](https://modus-continens.com) is a language for building OCI container images. Compared to Dockerfiles, Modus makes it easier to define complex, parameterized builds with negligible loss in efficiency w.r.t. [build time](#summary) or [image size](#image-efficiency). 
 Modus provides a cohesive system that replaces the need for Dockerfile templating. Another advantage of Modus is that it encourages developers to *explicitly* define the ways in which your builds can vary. In contrast, DOBS *implicitly* define this through their [JSON versions file](https://github.com/docker-library/openjdk/blob/master/versions.json): it is not sufficient on its own to understand which configurations are valid, since one also needs to check the other scripts or template files. For example, one would need to [check DOBS' templating script](https://github.com/docker-library/openjdk/blob/ce82579fcff27d724a50ceaa4f1c140ac0102f39/apply-templates.sh#L47-L49) to realize that Oracle-based JRE images are unsupported.
 
 ## Code Size
@@ -39,7 +39,7 @@ All builds were executed with an empty Docker build cache.
 
 [^image-count]: The number of images and the binaries themselves vary, so this is the number of images available at the time we conducted the benchmarks.
 
-### OpenJDK optimizations without Modus
+### OpenJDK Optimisations without Modus
 
 The DOBS' Dockerfiles do not take advantage of either multi-stage builds or the caching which would be easier to implement[^cache] with multi-stage builds.
 Since these are the primary ways Modus improves on performance, we decided to extend the existing OpenJDK approach to implement these optimizations _without Modus_.
@@ -62,16 +62,15 @@ We've included the exporting time, which is a subset of the total build time usi
 performed by Modus that could reduced in future versions.
 
 | DOBS                | μ (s) | μ + μ_t (s) |
-|---------------------|-------|-------------|
+|---------------------|------:|------------:|
 | Sequential          | 516.3 | 637.4       |
 | Parallel            | 119.8 | 240.9       |
 | Manual Optimization | 276.7 | 397.8       |
 
 | Modus               | μ (s) | μ + μ_t (s) |
-|---------------------|-------|-------------|
+|---------------------|------:|------------:|
 | Total               | 143.1 | 143.1       |
 | Exporting           | 18.0  | N/A         |
-
 
 Modus performs better overall than DOBS since DOBS' template processing (μ_t) took a significant fraction of the total time to build images.
 
