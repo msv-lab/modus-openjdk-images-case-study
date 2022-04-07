@@ -13,18 +13,18 @@ Modus provides a cohesive system that replaces the need for Dockerfile templatin
 A [single 267 line Modusfile](./linux.Modusfile) holds the conditional logic that defines all the varying image builds. In contrast, the templating approach requires a [332 line template file](https://github.com/docker-library/openjdk/blob/c6190d5cbbefd5233c190561fda803f742ae8241/Dockerfile-linux.template), a [77 line script](https://github.com/docker-library/openjdk/blob/abebf9325fea4606b9759fb3b9257ea3eef40061/apply-templates.sh) to apply the template, and a [140 line file](https://github.com/docker-library/bashbrew/blob/master/scripts/jq-template.awk) that defines some helper functions using awk and jq.
 
 Below are statistics for (variations of) the `linux.Modusfile` according to `wc` applied to variations of the files:
-|      Variation                               | Newlines | Words | Bytes |
+| Modus Variant                                | Newlines | Words | Bytes |
 |----------------------------------------------|---------:|------:|------:|
-| Unedited                                     | 267      | 869   | 10389 |
-| Comments/empty lines removed                 | 246      | 750   | 9607  |
-| Comments/empty lines & select tokens removed | 244      | 695   | 7645  |
+| Unedited                                     |      234 |   790 |  9922 |
+| Comments/empty lines removed                 |      212 |   680 |  9219 |
+| Comments/empty lines & select tokens removed |      210 |   623 |  7491 |
 
 Below are the combined statistics for (variations of) the files needed for templating, as mentioned above:
-|      Variation                               | Newlines | Words | Bytes |
+| DOBS Variant                                 | Newlines | Words | Bytes |
 |----------------------------------------------|---------:|------:|------:|
-| Unedited                                     | 549      | 2209  | 16109 |
-| Comments/empty lines removed                 | 441      | 1556  | 10626 |
-| Comments/empty lines & select tokens removed | 403      | 1326  |  9642 |
+| Unedited                                     |      549 |  2209 | 16109 |
+| Comments/empty lines removed                 |      441 |  1556 | 10626 |
+| Comments/empty lines & select tokens removed |      403 |  1326 |  9642 |
 
 ## Build Time - AWS (c5.2xlarge)
 
