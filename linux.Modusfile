@@ -4,16 +4,9 @@ is_oracle(VARIANT, ORACLE_VERSION) :- VARIANT = f"oraclelinux${ORACLE_VERSION}".
 is_debian(VARIANT) :- debian_variant(VARIANT). # HACK: to determine if (non-slim) debian base image, should replace.
 is_debian_slim(VARIANT, DEBIAN_SUITE) :- VARIANT = f"slim-${DEBIAN_SUITE}".
 
-oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION) :-
-    (
-        ORACLE_VERSION = "7",
-        INSTALLER = "yum install -y",
-        CLEANER = "rm -rf /var/cache/yum"
-    ;
-        number_gt(ORACLE_VERSION, "7"),
-        INSTALLER = "microdnf install",
-        CLEANER = "microdnf clean all"
-    ).
+oracle_installer_cleaner_version("yum install -y", "rm -rf /var/cache/yum", "7").
+oracle_installer_cleaner_version("microdnf install", "microdnf clean all", oracle_version)
+    :- number_gt(oracle_version, "7").
 
 debian_suffix_type("-scm", "jdk").
 debian_suffix_type("-curl", "jre").
@@ -74,7 +67,7 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, BASE_SETUP_COMMAND) :-
         JAVA_HOME = f"/opt/openjdk-${MAJOR_VERSION}"
     ;
         is_oracle(VARIANT, ORACLE_VERSION),
-        oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION),
+        oracle_installer_cleaner_version(INSTALLER, CLEANER, ORACLE_VERSION),
         from(f"oraclelinux:${ORACLE_VERSION}-slim"),
         BASE_SETUP_COMMAND = f"set -eux; \
                               ${INSTALLER} gzip tar binutils freetype fontconfig; \
