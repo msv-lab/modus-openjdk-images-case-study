@@ -22,7 +22,7 @@ debian_image(VARIANT, JAVA_TYPE) :-
     ).
 
 debian_packages("ca-certificates p11-kit", variant, major_version) :-
-    is_debian_slim(VARIANT, _).
+    is_debian_slim(variant, _).
 debian_packages("bzip2 unzip xz-utils binutils fontconfig libfreetype6 \
                  ca-certificates p11-kit",
                 variant,
@@ -32,7 +32,7 @@ debian_packages("bzip2 unzip xz-utils fontconfig libfreetype6 \
                  ca-certificates p11-kit",
                 variant,
                 major_version) :-
-    is_debian(variant), number_gt("13", MAJOR_VERSION).
+    is_debian(variant), number_gt("13", major_version).
 
 backwards_compatibility(MAJOR_VERSION, JAVA_HOME) :-
     # backwards compatibility for debian versions < 16
@@ -76,26 +76,21 @@ base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, BASE_SETUP_COMMAND) :-
         backwards_compatibility(MAJOR_VERSION, JAVA_HOME)
     ).
 
-gpg_check(GETTER, SOURCE) :-
-    (
-        SOURCE = "adopt",
-        run(f"${GETTER} openjdk.tgz.asc \"`cat /tmp/downloadUrl`.sign\""),
-        run("set -eux; \
-             export GNUPGHOME=\"$(mktemp -d)\"; \
-             echo \"$GNUPGHOME\" > /tmp/GNUPGHOME; \
-             gpg --batch --keyserver keyserver.ubuntu.com --recv-keys EAC843EBD3EFDB98CC772FADA5CD6035332FA671; \
-             gpg --batch --keyserver keyserver.ubuntu.com --keyserver-options no-self-sigs-only --recv-keys CA5F11C6CE22644D42C6AC4492EF8D39DC13168F; \
-             gpg --batch --list-sigs --keyid-format 0xLONG CA5F11C6CE22644D42C6AC4492EF8D39DC13168F \
-                 | tee /dev/stderr \
-                 | grep '0xA5CD6035332FA671' \
-                 | grep 'Andrew Haley'; \
-             gpg --batch --verify openjdk.tgz.asc openjdk.tgz;"),
-        run("gpgconf --kill all;"),
-        run("rm -rf \"`cat /tmp/GNUPGHOME`\"")
-    ;
-        SOURCE != "adopt",
-        run("")
-    ).
+gpg_check_source(getter, "adopt") :-
+    run(f"${getter} openjdk.tgz.asc \"`cat /tmp/downloadUrl`.sign\""),
+    run("set -eux; \
+            export GNUPGHOME=\"$(mktemp -d)\"; \
+            echo \"$GNUPGHOME\" > /tmp/GNUPGHOME; \
+            gpg --batch --keyserver keyserver.ubuntu.com --recv-keys EAC843EBD3EFDB98CC772FADA5CD6035332FA671; \
+            gpg --batch --keyserver keyserver.ubuntu.com --keyserver-options no-self-sigs-only --recv-keys CA5F11C6CE22644D42C6AC4492EF8D39DC13168F; \
+            gpg --batch --list-sigs --keyid-format 0xLONG CA5F11C6CE22644D42C6AC4492EF8D39DC13168F \
+                | tee /dev/stderr \
+                | grep '0xA5CD6035332FA671' \
+                | grep 'Andrew Haley'; \
+            gpg --batch --verify openjdk.tgz.asc openjdk.tgz;"),
+    run("gpgconf --kill all;"),
+    run("rm -rf \"`cat /tmp/GNUPGHOME`\"").
+gpg_check_source(getter, source) :- source != "adopt", run("").
 
 extract_bin(JAVA_HOME) :-
     run(f"mkdir -p ${JAVA_HOME}; \
@@ -131,7 +126,7 @@ install_bin(AMD64_URL, ARM64_URL, JAVA_HOME, SOURCE) :-
           esac; \
           echo \"$downloadUrl\" > /tmp/downloadUrl; \
           ${GETTER} openjdk.tgz \"\$downloadUrl\";"),
-    gpg_check(GETTER, SOURCE),
+    gpg_check_source(GETTER, SOURCE),
     extract_bin(JAVA_HOME),
     run("rm -rf /tmp/downloadUrl").
 
