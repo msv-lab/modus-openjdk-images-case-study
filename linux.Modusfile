@@ -252,14 +252,14 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, 
     )::merge,
     entry_sh(MAJOR_VERSION, JAVA_TYPE, VARIANT).
 
-openjdk(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
+openjdk(major_version, java_type, variant) :-
     (
-        VARIANT = f"windows/${WINDOWS_IMAGE}",
+        string_concat("windows", windows_image, variant),
         "0" = "1", # NOTE: no windows support atm. So this will intentionally always fail.
-        openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, SOURCE)
+        openjdk_setup(major_version, version, java_type, variant, amd64_url, arm64_url, source)
             ::set_entrypoint("./entry.sh")
     ;
-        openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, SOURCE)
+        openjdk_setup(major_version, version, java_type, variant, amd64_url, arm64_url, source)
             ::set_entrypoint("./entry.sh")
     ).
 
