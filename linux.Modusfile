@@ -43,18 +43,11 @@ backwards_compatibility(MAJOR_VERSION, JAVA_HOME) :-
               && [ \"${JAVA_HOME}\" = \"\$(docker-java-home)\" ]")
     ;
         number_geq(MAJOR_VERSION, "16"),
-        JAVA_HOME = JAVA_HOME,
         run("")
     ).
 
-locale(VARIANT, LANG) :-
-    (
-        is_oracle(VARIANT, "7"),
-        LANG = "en_US.UTF-8"
-    ;
-        !is_oracle(VARIANT, "7"),
-        LANG = "C.UTF-8"
-    ).
+locale(variant, "en_US.UTF-8") :- is_oracle(variant, "7").
+locale(variant, "C.UTF-8") :- !is_oracle(variant, "7").
 
 # Selects base image and runs relevant initial commands to prepare it.
 base_image(MAJOR_VERSION, VARIANT, JAVA_HOME, JAVA_TYPE, BASE_SETUP_COMMAND) :-
