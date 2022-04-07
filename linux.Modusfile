@@ -15,12 +15,9 @@ oracle_commands(INSTALLER, CLEANER, ORACLE_VERSION) :-
         CLEANER = "microdnf clean all"
     ).
 
-debian_suffix(SUFFIX, JAVA_TYPE) :-
-    (
-        JAVA_TYPE = "jdk", SUFFIX = "-scm"
-    ;
-        JAVA_TYPE = "jre", SUFFIX = "-curl"
-    ).
+debian_suffix_type("-scm", "jdk").
+debian_suffix_type("-curl", "jre").
+
 debian_image(VARIANT, JAVA_TYPE) :-
     (
         is_debian_slim(VARIANT, DEBIAN_SUITE),
@@ -28,7 +25,7 @@ debian_image(VARIANT, JAVA_TYPE) :-
         from(IMAGE_NAME)
     ;
         is_debian(VARIANT),
-        debian_suffix(SUFFIX, JAVA_TYPE),
+        debian_suffix_type(SUFFIX, JAVA_TYPE),
         IMAGE_NAME = f"buildpack-deps:${VARIANT}${SUFFIX}",
         from(IMAGE_NAME)
     ).
