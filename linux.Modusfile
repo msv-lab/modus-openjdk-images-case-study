@@ -167,27 +167,21 @@ ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME) :-
               ldconfig;")
     ).
 
-smoke_tests(MAJOR_VERSION, JAVA_TYPE) :-
+smoke_tests_version_type("8", "jdk") :- run("javac -version; java -version").
+smoke_tests_version_type("8", "jre") :- run("java -version").
+smoke_tests_version_type(major_version, java_type) :-
+    number_gt(major_version, "8"),
     (
-        MAJOR_VERSION = "8", JAVA_TYPE = "jdk",
-        COMMAND = "javac -version; java -version"
+        java_type = "jdk",
+        command = "java -Xshare:dump; \
+                    fileEncoding=\"$(echo 'System.out.println(System.getProperty(\"file.encoding\"))' | jshell -s -)\"; [ \"$fileEncoding\" = 'UTF-8' ]; rm -rf ~/.java; \
+                    javac --version; \
+                    java --version"
     ;
-        MAJOR_VERSION = "8", JAVA_TYPE = "jre",
-        COMMAND = "java -version"
-    ;
-        number_gt(MAJOR_VERSION, "8"),
-        (
-            JAVA_TYPE = "jdk",
-            COMMAND = "java -Xshare:dump; \
-                       fileEncoding=\"$(echo 'System.out.println(System.getProperty(\"file.encoding\"))' | jshell -s -)\"; [ \"$fileEncoding\" = 'UTF-8' ]; rm -rf ~/.java; \
-                       javac --version; \
-                       java --version"
-        ;
-            JAVA_TYPE = "jre",
-            COMMAND = "java -Xshare:dump; java --version"
-        )
+        java_type = "jre",
+        command = "java -Xshare:dump; java --version"
     ),
-    run(COMMAND).
+    run(command).
 
 entry_sh_command(MAJOR_VERSION, JAVA_TYPE, VARIANT, COMMAND) :-
     (
@@ -223,7 +217,7 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, 
         locale(VARIANT, LANG),
         install_bin(AMD64_URL, ARM64_URL, JAVA_HOME, SOURCE)::copy(JAVA_HOME, JAVA_HOME),
         ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
-        smoke_tests(MAJOR_VERSION, JAVA_TYPE)
+        smoke_tests_version_type(MAJOR_VERSION, JAVA_TYPE)
     )::merge.
 
 openjdk(major_version, java_type, variant) :-
