@@ -107,7 +107,6 @@ install_bin(AMD64_URL, ARM64_URL, JAVA_HOME, SOURCE) :-
     AMD64_MATCH = "x86_64",
     ARM64_MATCH = "aarch64",
     GETTER = "wget -O",
-
     # It shouldn't really matter that the binary we're downloading/extracting here may not work
     # on alpine, since we will just copy the extracted files into the correct base image later.
     # So this is fine as long as we don't try to execute it here.
@@ -190,23 +189,23 @@ smoke_tests(MAJOR_VERSION, JAVA_TYPE) :-
     ),
     run(COMMAND).
 
-entry_sh(MAJOR_VERSION, JAVA_TYPE, VARIANT) :-
+entry_sh_command(MAJOR_VERSION, JAVA_TYPE, VARIANT, COMMAND) :-
     (
         is_alpine(VARIANT, _), SHELL = "ash"
     ;
         !is_alpine(VARIANT, _), SHELL = "bash"
     ),
     (
-        MAJOR_VERSION = "8", JAVA_TYPE = JAVA_TYPE,
-        COMMAND = SHELL
-    ;
-        number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jre",
+        (
+            MAJOR_VERSION = "8"
+        ;
+            number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jre"
+        ),
         COMMAND = SHELL
     ;
         number_gt(MAJOR_VERSION, "8"), JAVA_TYPE = "jdk",
         COMMAND = "jshell" # jshell only launched if jdk
-    ),
-    run(f"echo '#!/bin/${SHELL}' > entry.sh; echo '${COMMAND}' >> entry.sh; chmod +x entry.sh").
+    ).
 
 openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, SOURCE) :-
     openjdk_config(MAJOR_VERSION, VERSION,
@@ -225,19 +224,17 @@ openjdk_setup(MAJOR_VERSION, VERSION, JAVA_TYPE, VARIANT, AMD64_URL, ARM64_URL, 
         install_bin(AMD64_URL, ARM64_URL, JAVA_HOME, SOURCE)::copy(JAVA_HOME, JAVA_HOME),
         ca_certs(MAJOR_VERSION, JAVA_TYPE, VARIANT, JAVA_HOME),
         smoke_tests(MAJOR_VERSION, JAVA_TYPE)
-    )::merge,
-    entry_sh(MAJOR_VERSION, JAVA_TYPE, VARIANT).
+    )::merge.
 
 openjdk(major_version, java_type, variant) :-
+    entry_sh_command(major_version, java_type, variant, command),
     (
         string_concat("windows", windows_image, variant),
         "0" = "1", # NOTE: no windows support atm. So this will intentionally always fail.
         openjdk_setup(major_version, version, java_type, variant, amd64_url, arm64_url, source)
-            ::set_entrypoint("./entry.sh")
     ;
         openjdk_setup(major_version, version, java_type, variant, amd64_url, arm64_url, source)
-            ::set_entrypoint("./entry.sh")
-    ).
+    )::set_entrypoint(command).
 
 debian_variant("bullseye").
 debian_variant("buster").
