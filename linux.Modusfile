@@ -5,8 +5,8 @@ is_debian(VARIANT) :- debian_variant(VARIANT). # HACK: to determine if (non-slim
 is_debian_slim(VARIANT, DEBIAN_SUITE) :- VARIANT = f"slim-${DEBIAN_SUITE}".
 
 oracle_installer_cleaner_version("yum install -y", "rm -rf /var/cache/yum", "7").
-oracle_installer_cleaner_version("microdnf install", "microdnf clean all", oracle_version)
-    :- number_gt(oracle_version, "7").
+oracle_installer_cleaner_version("microdnf install", "microdnf clean all", oracle_version) :-
+    number_gt(oracle_version, "7").
 
 debian_suffix_type("-scm", "jdk").
 debian_suffix_type("-curl", "jre").
@@ -20,19 +20,19 @@ debian_image(VARIANT, JAVA_TYPE) :-
         debian_suffix_type(SUFFIX, JAVA_TYPE),
         from(f"buildpack-deps:${VARIANT}${SUFFIX}")
     ).
-debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
-    (
-        is_debian_slim(VARIANT, DEBIAN_SUITE),
-        PACKAGES = "ca-certificates p11-kit"
-    ;
-        is_debian(VARIANT),
-        number_geq(MAJOR_VERSION, "13"),
-        PACKAGES = "bzip2 unzip xz-utils binutils fontconfig libfreetype6 ca-certificates p11-kit"
-    ;
-        is_debian(VARIANT),
-        number_gt("13", MAJOR_VERSION),
-        PACKAGES = "bzip2 unzip xz-utils fontconfig libfreetype6 ca-certificates p11-kit"
-    ).
+
+debian_packages("ca-certificates p11-kit", variant, major_version) :-
+    is_debian_slim(VARIANT, _).
+debian_packages("bzip2 unzip xz-utils binutils fontconfig libfreetype6 \
+                 ca-certificates p11-kit",
+                variant,
+                major_version) :-
+    is_debian(variant), number_geq(major_version, "13").
+debian_packages("bzip2 unzip xz-utils fontconfig libfreetype6 \
+                 ca-certificates p11-kit",
+                variant,
+                major_version) :-
+    is_debian(variant), number_gt("13", MAJOR_VERSION).
 
 backwards_compatibility(MAJOR_VERSION, JAVA_HOME) :-
     # backwards compatibility for debian versions < 16
