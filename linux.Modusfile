@@ -14,13 +14,11 @@ debian_suffix_type("-curl", "jre").
 debian_image(VARIANT, JAVA_TYPE) :-
     (
         is_debian_slim(VARIANT, DEBIAN_SUITE),
-        IMAGE_NAME = f"debian:${DEBIAN_SUITE}-slim",
-        from(IMAGE_NAME)
+        from(f"debian:${DEBIAN_SUITE}-slim")
     ;
         is_debian(VARIANT),
         debian_suffix_type(SUFFIX, JAVA_TYPE),
-        IMAGE_NAME = f"buildpack-deps:${VARIANT}${SUFFIX}",
-        from(IMAGE_NAME)
+        from(f"buildpack-deps:${VARIANT}${SUFFIX}")
     ).
 debian_packages(PACKAGES, VARIANT, MAJOR_VERSION) :-
     (
